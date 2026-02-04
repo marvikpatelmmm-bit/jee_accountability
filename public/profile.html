@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - JEE Study Tracker</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/profile.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/dashboard" class="logo">📚 JEE Tracker</a>
+            <div class="nav-links">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/leaderboard">Leaderboard</a>
+                <a href="/profile" class="active">Profile</a>
+                <a href="#" id="logoutBtn">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container profile-container">
+        <!-- Profile Header -->
+        <div class="profile-header" id="profileHeader">
+            <div class="profile-avatar" id="profileAvatar">?</div>
+            <div class="profile-info">
+                <h1 id="profileName">Loading...</h1>
+                <p class="username" id="profileUsername">@username</p>
+                <p class="join-date" id="profileJoinDate">Member since ...</p>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="profile-stats">
+            <div class="stats-grid" id="profileStats">
+                <div class="stat-card">
+                    <div class="stat-value">-</div>
+                    <div class="stat-label">Total Tasks</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">-</div>
+                    <div class="stat-label">Success Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">-</div>
+                    <div class="stat-label">Study Hours</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">-</div>
+                    <div class="stat-label">Current Streak</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- This Week Performance -->
+        <div class="performance-section">
+            <h2>This Week's Performance</h2>
+            <div class="week-stats-grid" id="weekStats">
+                <div class="week-stat-item">
+                    <div class="week-stat-value">-</div>
+                    <div class="week-stat-label">Tasks Completed</div>
+                </div>
+                <div class="week-stat-item">
+                    <div class="week-stat-value">-</div>
+                    <div class="week-stat-label">Success Rate</div>
+                </div>
+                <div class="week-stat-item">
+                    <div class="week-stat-value">-</div>
+                    <div class="week-stat-label">Hours Studied</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily History -->
+        <div class="history-section">
+            <h2>Daily History</h2>
+            
+            <!-- Calendar Heatmap -->
+            <div class="calendar-heatmap">
+                <div class="heatmap-header">
+                    <div class="heatmap-months">
+                        <span>Last 30 Days</span>
+                    </div>
+                </div>
+                <div class="heatmap-grid" id="heatmapGrid">
+                    <!-- Heatmap cells will be generated here -->
+                </div>
+                <div class="heatmap-legend">
+                    <span>Less</span>
+                    <div class="heatmap-legend-boxes">
+                        <div class="heatmap-legend-box" style="background: var(--bg-tertiary);"></div>
+                        <div class="heatmap-legend-box" style="background: rgba(0, 212, 255, 0.3);"></div>
+                        <div class="heatmap-legend-box" style="background: rgba(0, 212, 255, 0.5);"></div>
+                        <div class="heatmap-legend-box" style="background: rgba(0, 212, 255, 0.7);"></div>
+                        <div class="heatmap-legend-box" style="background: var(--accent-blue);"></div>
+                    </div>
+                    <span>More</span>
+                </div>
+            </div>
+
+            <!-- History List -->
+            <div class="history-list" id="historyList">
+                <!-- History items will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Task History with Filters -->
+        <div class="task-history-section">
+            <h2>All Tasks</h2>
+            
+            <div class="filters">
+                <input type="date" id="startDate" class="form-input">
+                <input type="date" id="endDate" class="form-input">
+                <select id="subjectFilter" class="form-select">
+                    <option value="All">All Subjects</option>
+                    <option value="Maths">Maths</option>
+                    <option value="Physics">Physics</option>
+                    <option value="Chemistry">Chemistry</option>
+                    <option value="Other">Other</option>
+                </select>
+                <button class="btn btn-primary" id="applyFilters">Apply Filters</button>
+            </div>
+
+            <div class="task-table-container">
+                <table class="task-history-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Task</th>
+                            <th>Subject</th>
+                            <th>Estimated</th>
+                            <th>Actual</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="taskHistoryTable">
+                        <!-- Task history will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/profile.js"></script>
+</body>
+</html>

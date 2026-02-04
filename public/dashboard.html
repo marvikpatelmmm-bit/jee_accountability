@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - JEE Study Tracker</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/dashboard" class="logo">📚 JEE Tracker</a>
+            <div class="nav-links">
+                <a href="/dashboard" class="active">Dashboard</a>
+                <a href="/leaderboard">Leaderboard</a>
+                <a href="/profile">Profile</a>
+                <a href="#" id="logoutBtn">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container dashboard-container">
+        <div class="dashboard-grid">
+            <!-- Left Sidebar - Today's Tasks -->
+            <aside class="sidebar-tasks">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Today's Tasks</h3>
+                    </div>
+                    
+                    <div class="task-filters">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="pending">Pending</button>
+                        <button class="filter-btn" data-filter="completed">Done</button>
+                    </div>
+
+                    <div class="tasks-list" id="tasksList">
+                        <!-- Tasks will be loaded here -->
+                    </div>
+
+                    <div class="action-buttons" style="margin-top: 1rem;">
+                        <button class="btn btn-primary btn-full" id="addTasksBtn">
+                            <span>+ Plan Your Day</span>
+                        </button>
+                        <button class="btn btn-secondary btn-full" id="endDayBtn">
+                            <span>End My Day</span>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center - Active Task & Live Feed -->
+            <main class="main-content">
+                <!-- Active Task Section -->
+                <div class="active-task-section" id="activeTaskSection">
+                    <div class="no-task-content" id="noTaskContent">
+                        <h2>No Active Task</h2>
+                        <p style="color: var(--text-secondary); margin: 1rem 0;">Select a task from your list to start studying</p>
+                    </div>
+                    
+                    <div class="active-task-content" id="activeTaskContent" style="display: none;">
+                        <div class="active-task-header">
+                            <span class="subject-tag" id="activeSubjectTag">Maths</span>
+                            <h2 class="active-task-name" id="activeTaskName">Task Name</h2>
+                        </div>
+
+                        <div class="timer-display">
+                            <div class="timer-circle">
+                                <svg class="timer-svg" width="200" height="200" viewBox="0 0 200 200">
+                                    <defs>
+                                        <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" style="stop-color:#00d4ff"/>
+                                            <stop offset="100%" style="stop-color:#a855f7"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <circle class="timer-bg" cx="100" cy="100" r="90"/>
+                                    <circle class="timer-progress" id="timerProgress" cx="100" cy="100" r="90" 
+                                            stroke-dasharray="565.48" stroke-dashoffset="0"/>
+                                </svg>
+                                <div class="timer-text">
+                                    <span class="timer-elapsed" id="timerElapsed">00:00</span>
+                                    <span class="timer-divider">/</span>
+                                    <span class="timer-estimated" id="timerEstimated">30m</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="timer-status on-track" id="timerStatus">
+                            <span class="status-indicator active"></span>
+                            <span id="timerStatusText">On Track</span>
+                        </div>
+
+                        <div class="timer-controls">
+                            <button class="btn btn-success" id="completeTaskBtn">
+                                <span>Mark Complete</span>
+                            </button>
+                            <button class="btn btn-secondary" id="pauseTaskBtn" style="display: none;">
+                                <span>Pause</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Feed Section -->
+                <div class="live-feed-section">
+                    <div class="live-feed-header">
+                        <h3>Live Feed</h3>
+                        <span class="live-indicator">
+                            <span class="live-dot"></span>
+                            LIVE
+                        </span>
+                    </div>
+                    <div class="user-cards-grid" id="liveFeed">
+                        <!-- Live feed cards will be loaded here -->
+                    </div>
+                </div>
+            </main>
+
+            <!-- Right Sidebar - Stats -->
+            <aside class="sidebar-stats">
+                <!-- Weekly Leaderboard Preview -->
+                <div class="leaderboard-preview">
+                    <h3>🏆 Weekly Leaderboard</h3>
+                    <div id="leaderboardPreview">
+                        <!-- Leaderboard preview will be loaded here -->
+                    </div>
+                    <a href="/leaderboard" class="btn btn-secondary btn-sm btn-full" style="margin-top: 1rem;">
+                        View Full Leaderboard
+                    </a>
+                </div>
+
+                <!-- Group Stats -->
+                <div class="group-stats">
+                    <h3>📊 Group Today</h3>
+                    <div class="group-stat-item">
+                        <span class="group-stat-label">Total Tasks</span>
+                        <span class="group-stat-value" id="groupTotalTasks">0</span>
+                    </div>
+                    <div class="group-stat-item">
+                        <span class="group-stat-label">Study Hours</span>
+                        <span class="group-stat-value" id="groupStudyHours">0h</span>
+                    </div>
+                    <div class="group-stat-item">
+                        <span class="group-stat-label">Success Rate</span>
+                        <span class="group-stat-value" id="groupSuccessRate">0%</span>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Add Tasks Modal -->
+    <div class="modal-overlay" id="addTasksModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Plan Your Day</h2>
+                <button class="modal-close" id="closeAddTasksModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="tasksContainer">
+                    <!-- Task entry rows will be added here -->
+                </div>
+                <button class="btn btn-secondary btn-full" id="addAnotherTask" style="margin-top: 1rem;">
+                    <span>+ Add Another Task</span>
+                </button>
+                <div class="form-summary">
+                    <span>Total Estimated Time:</span>
+                    <strong id="totalTime">0h 0m</strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelAddTasks">Cancel</button>
+                <button class="btn btn-primary" id="saveTasks">Save & Start Day</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- End Day Modal -->
+    <div class="modal-overlay" id="endDayModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">End Your Day</h2>
+                <button class="modal-close" id="closeEndDayModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="end-day-form">
+                    <div class="tasks-summary-section">
+                        <h3>Today's Summary</h3>
+                        <div id="todaySummary">
+                            <!-- Summary will be populated here -->
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Problems Solved</label>
+                        <div class="problems-grid">
+                            <div class="problem-input">
+                                <label>Maths</label>
+                                <input type="number" id="mathsProblems" class="form-input" min="0" value="0">
+                            </div>
+                            <div class="problem-input">
+                                <label>Physics</label>
+                                <input type="number" id="physicsProblems" class="form-input" min="0" value="0">
+                            </div>
+                            <div class="problem-input">
+                                <label>Chemistry</label>
+                                <input type="number" id="chemistryProblems" class="form-input" min="0" value="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="topicsCovered">Topics/Chapters Covered</label>
+                        <textarea id="topicsCovered" class="form-textarea" rows="3" 
+                                  placeholder="e.g., Integration, Rotational Motion, Organic Reactions"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="totalStudyHours">Total Study Hours</label>
+                        <input type="number" id="totalStudyHours" class="form-input" step="0.5" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="dayNotes">Notes/Reflection (Optional)</label>
+                        <textarea id="dayNotes" class="form-textarea" rows="2" 
+                                  placeholder="How was your day? Any insights?"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Self-Rating</label>
+                        <div class="star-rating" id="starRating">
+                            <span class="star" data-rating="1">⭐</span>
+                            <span class="star" data-rating="2">⭐</span>
+                            <span class="star" data-rating="3">⭐</span>
+                            <span class="star" data-rating="4">⭐</span>
+                            <span class="star" data-rating="5">⭐</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelEndDay">Cancel</button>
+                <button class="btn btn-primary" id="confirmEndDay">End Day & Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/tasks.js"></script>
+    <script src="/js/realtime.js"></script>
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>

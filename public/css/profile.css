@@ -1,0 +1,366 @@
+/* ============================================
+   PROFILE PAGE STYLES
+   ============================================ */
+
+.profile-container {
+    padding: 2rem 0;
+}
+
+/* Profile Header */
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    padding: 2rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.profile-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+}
+
+.profile-info h1 {
+    font-size: 2rem;
+    margin-bottom: 0.25rem;
+}
+
+.profile-info .username {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.profile-info .join-date {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+/* Stats Section */
+.profile-stats {
+    margin-bottom: 2rem;
+}
+
+.profile-stats .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+/* Performance Section */
+.performance-section {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.performance-section h2 {
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+}
+
+.week-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.week-stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.week-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-blue);
+    margin-bottom: 0.25rem;
+}
+
+.week-stat-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* History Section */
+.history-section {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.history-section h2 {
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+}
+
+/* Calendar Heatmap */
+.calendar-heatmap {
+    margin-bottom: 2rem;
+}
+
+.heatmap-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.heatmap-months {
+    display: flex;
+    gap: 2rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(30, 1fr);
+    gap: 3px;
+}
+
+.heatmap-cell {
+    aspect-ratio: 1;
+    border-radius: 2px;
+    background: var(--bg-tertiary);
+    transition: all var(--transition-fast);
+}
+
+.heatmap-cell:hover {
+    transform: scale(1.2);
+    box-shadow: var(--shadow-sm);
+}
+
+.heatmap-cell.level-0 { background: var(--bg-tertiary); }
+.heatmap-cell.level-1 { background: rgba(0, 212, 255, 0.3); }
+.heatmap-cell.level-2 { background: rgba(0, 212, 255, 0.5); }
+.heatmap-cell.level-3 { background: rgba(0, 212, 255, 0.7); }
+.heatmap-cell.level-4 { background: var(--accent-blue); }
+
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.heatmap-legend-boxes {
+    display: flex;
+    gap: 3px;
+}
+
+.heatmap-legend-box {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+/* History List */
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.history-item:hover {
+    background: var(--bg-hover);
+}
+
+.history-date {
+    min-width: 100px;
+    font-weight: 500;
+}
+
+.history-stats {
+    flex: 1;
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.history-stats span {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.history-success-rate {
+    font-weight: 600;
+    color: var(--accent-blue);
+}
+
+/* Task History Section */
+.task-history-section {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.task-history-section h2 {
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+}
+
+/* Filters */
+.filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.filters input,
+.filters select {
+    min-width: 150px;
+}
+
+/* Task Table */
+.task-table-container {
+    overflow-x: auto;
+}
+
+.task-history-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.task-history-table th,
+.task-history-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.task-history-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.task-history-table tbody tr:hover {
+    background: var(--bg-tertiary);
+}
+
+.task-history-table .status-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.status-badge.ontime {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success-green);
+}
+
+.status-badge.delayed {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning-orange);
+}
+
+.status-badge.pending {
+    background: rgba(107, 114, 128, 0.2);
+    color: var(--text-muted);
+}
+
+.status-badge.in_progress {
+    background: rgba(0, 212, 255, 0.2);
+    color: var(--accent-blue);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .profile-stats .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .week-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .heatmap-grid {
+        grid-template-columns: repeat(14, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .profile-stats .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .history-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .history-stats {
+        flex-wrap: wrap;
+    }
+
+    .filters {
+        flex-direction: column;
+    }
+
+    .filters input,
+    .filters select {
+        width: 100%;
+    }
+
+    .task-history-table {
+        font-size: 0.875rem;
+    }
+
+    .task-history-table th,
+    .task-history-table td {
+        padding: 0.75rem 0.5rem;
+    }
+}
