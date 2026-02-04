@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timeline - JEE Study Tracker</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .timeline-page {
+            padding-top: 90px;
+            padding-bottom: var(--space-xl);
+            min-height: 100vh;
+            background: 
+                radial-gradient(ellipse at top left, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(16, 185, 129, 0.06) 0%, transparent 50%),
+                var(--bg-primary);
+        }
+
+        .timeline-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 var(--space-lg);
+        }
+
+        /* Timeline Header */
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-xl);
+            flex-wrap: wrap;
+            gap: var(--space-md);
+        }
+
+        .timeline-title h1 {
+            margin-bottom: var(--space-xs);
+        }
+
+        .viewing-user {
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        .timeline-controls {
+            display: flex;
+            gap: var(--space-md);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* User Tabs */
+        .user-tabs {
+            display: flex;
+            gap: var(--space-xs);
+            background: var(--glass-bg);
+            padding: 4px;
+            border-radius: var(--radius-full);
+        }
+
+        .user-tab {
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-full);
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .user-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .user-tab.active {
+            background: var(--gradient-purple);
+            color: white;
+        }
+
+        /* Date Controls */
+        .date-controls {
+            display: flex;
+            gap: var(--space-sm);
+            align-items: center;
+        }
+
+        .date-input {
+            width: 140px;
+            padding: 8px 12px;
+        }
+
+        /* Timeline Card */
+        .timeline-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--glass-border);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-xl);
+        }
+
+        .timeline-grid {
+            position: relative;
+        }
+
+        .timeline-hour {
+            display: flex;
+            height: 50px;
+            border-bottom: 1px solid var(--glass-border);
+            position: relative;
+        }
+
+        .timeline-hour:last-child {
+            border-bottom: none;
+        }
+
+        .hour-label {
+            width: 70px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            padding: var(--space-sm);
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .hour-bar {
+            flex: 1;
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+            margin: 4px 0;
+            border-radius: var(--radius-sm);
+        }
+
+        .task-block {
+            position: absolute;
+            left: 0;
+            right: 4px;
+            border-radius: var(--radius-sm);
+            padding: 4px 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        .task-block:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+
+        .task-block.maths {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.4) 0%, rgba(249, 115, 22, 0.6) 100%);
+            border-left: 3px solid var(--subject-maths);
+        }
+
+        .task-block.physics {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(139, 92, 246, 0.6) 100%);
+            border-left: 3px solid var(--subject-physics);
+        }
+
+        .task-block.chemistry {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.4) 0%, rgba(16, 185, 129, 0.6) 100%);
+            border-left: 3px solid var(--subject-chemistry);
+        }
+
+        .task-block-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .task-block-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .task-block-duration {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Timeline Summary */
+        .timeline-summary-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--glass-border);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-xl);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-lg);
+        }
+
+        @media (max-width: 768px) {
+            .summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .summary-label {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Comparison Section */
+        .comparison-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--glass-border);
+            padding: var(--space-lg);
+        }
+
+        .comparison-toggle {
+            margin-bottom: var(--space-lg);
+        }
+
+        .comparison-view {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--space-lg);
+        }
+
+        .comparison-user {
+            background: var(--glass-bg);
+            border-radius: var(--radius-lg);
+            padding: var(--space-md);
+        }
+
+        .comparison-user h4 {
+            margin-bottom: var(--space-md);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .mini-timeline {
+            position: relative;
+            height: 200px;
+            overflow-y: auto;
+        }
+
+        .mini-hour {
+            display: flex;
+            height: 30px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .mini-hour-label {
+            width: 40px;
+            font-size: 10px;
+            color: var(--text-muted);
+            padding: 4px;
+        }
+
+        .mini-hour-bar {
+            flex: 1;
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .mini-task-block {
+            position: absolute;
+            left: 0;
+            right: 2px;
+            border-radius: 2px;
+            font-size: 8px;
+            padding: 2px 4px;
+            color: white;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        /* Current Time Indicator */
+        .current-time-line {
+            position: absolute;
+            left: 70px;
+            right: 0;
+            height: 2px;
+            background: var(--accent-red);
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .current-time-line::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: -4px;
+            width: 10px;
+            height: 10px;
+            background: var(--accent-red);
+            border-radius: 50%;
+        }
+
+        /* Empty Timeline */
+        .empty-timeline {
+            text-align: center;
+            padding: var(--space-2xl);
+            color: var(--text-muted);
+        }
+
+        .empty-timeline-icon {
+            font-size: 48px;
+            margin-bottom: var(--space-md);
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="nav-logo">📚</span>
+            <span class="nav-title">JEE Tracker</span>
+        </div>
+        <div class="nav-links">
+            <a href="/dashboard.html" class="nav-link">Dashboard</a>
+            <a href="/timeline.html" class="nav-link active">Timeline</a>
+            <a href="/leaderboard.html" class="nav-link">Leaderboard</a>
+            <a href="/profile.html" class="nav-link">Profile</a>
+        </div>
+        <div class="nav-user">
+            <span class="user-name" id="current-user-name"></span>
+            <button class="btn btn-secondary btn-sm" id="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Main Timeline Page -->
+    <main class="timeline-page">
+        <div class="timeline-container">
+            <!-- Timeline Header -->
+            <div class="timeline-header">
+                <div class="timeline-title">
+                    <h1>📅 Timeline</h1>
+                    <span class="viewing-user" id="viewing-user">Your Timeline</span>
+                </div>
+                
+                <div class="timeline-controls">
+                    <!-- User Tabs -->
+                    <div class="user-tabs" id="user-tabs">
+                        <!-- Populated dynamically -->
+                    </div>
+                    
+                    <!-- Date Controls -->
+                    <div class="date-controls">
+                        <button class="btn btn-secondary btn-sm" id="prev-day">←</button>
+                        <input type="date" id="timeline-date" class="input date-input">
+                        <button class="btn btn-secondary btn-sm" id="next-day">→</button>
+                        <button class="btn btn-primary btn-sm" id="today-btn">Today</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Timeline Grid -->
+            <div class="timeline-card">
+                <div class="timeline-grid" id="timeline-grid">
+                    <!-- 24 hour rows generated dynamically -->
+                </div>
+            </div>
+            
+            <!-- Timeline Summary -->
+            <div class="timeline-summary-card">
+                <h2 class="section-title">📊 Summary</h2>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="summary-value" id="timeline-total-hours">0h 0m</div>
+                        <div class="summary-label">Total Study Time</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="timeline-sessions">0</div>
+                        <div class="summary-label">Study Sessions</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="timeline-productive-hour">-</div>
+                        <div class="summary-label">Most Productive</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="timeline-subjects">-</div>
+                        <div class="summary-label">Subjects Covered</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Compare All Users -->
+            <div class="comparison-card">
+                <h2 class="section-title">👥 Compare All Users</h2>
+                <div class="comparison-toggle">
+                    <button class="btn btn-primary" id="show-comparison">
+                        Show Side-by-Side Comparison
+                    </button>
+                </div>
+                <div class="comparison-view" id="comparison-view" style="display: none;">
+                    <!-- Side by side timelines -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/timeline.js"></script>
+</body>
+</html>

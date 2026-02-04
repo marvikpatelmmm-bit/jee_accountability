@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE Study Tracker - Login</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        /* Auth Page Specific Styles */
+        .auth-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: 
+                radial-gradient(ellipse at top, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                var(--bg-primary);
+            padding: var(--space-lg);
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .auth-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+
+        .auth-header {
+            text-align: center;
+            padding: var(--space-xl);
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .logo {
+            font-size: 56px;
+            margin-bottom: var(--space-md);
+        }
+
+        .auth-header h1 {
+            font-size: 28px;
+            margin-bottom: var(--space-xs);
+            background: var(--gradient-purple);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tagline {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .auth-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: var(--space-md);
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .auth-tab:hover {
+            color: var(--text-secondary);
+        }
+
+        .auth-tab.active {
+            color: var(--text-primary);
+        }
+
+        .auth-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 20%;
+            right: 20%;
+            height: 2px;
+            background: var(--gradient-purple);
+            border-radius: 2px;
+        }
+
+        .auth-form {
+            display: none;
+            padding: var(--space-xl);
+        }
+
+        .auth-form.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .auth-footer {
+            text-align: center;
+            padding: var(--space-lg);
+            border-top: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .error-message {
+            color: var(--accent-red);
+            font-size: 13px;
+            margin-top: var(--space-xs);
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="logo">📚</div>
+                <h1>JEE Study Tracker</h1>
+                <p class="tagline">Accountability for JEE Aspirants</p>
+            </div>
+            
+            <!-- Tab Switcher -->
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Login</button>
+                <button class="auth-tab" data-tab="register">Register</button>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form active">
+                <div class="form-group">
+                    <label for="login-username">Username</label>
+                    <input type="text" id="login-username" class="input" 
+                           placeholder="Enter your username" required autocomplete="username">
+                    <div class="error-message" id="login-username-error"></div>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" class="input" 
+                           placeholder="Enter your password" required autocomplete="current-password">
+                    <div class="error-message" id="login-password-error"></div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+                    Login
+                </button>
+                <div class="error-message" id="login-general-error" style="text-align: center; margin-top: var(--space-md);"></div>
+            </form>
+            
+            <!-- Register Form -->
+            <form id="register-form" class="auth-form">
+                <div class="form-group">
+                    <label for="register-name">Full Name</label>
+                    <input type="text" id="register-name" class="input" 
+                           placeholder="Enter your full name" required autocomplete="name">
+                    <div class="error-message" id="register-name-error"></div>
+                </div>
+                <div class="form-group">
+                    <label for="register-username">Username</label>
+                    <input type="text" id="register-username" class="input" 
+                           placeholder="Choose a username" required autocomplete="username">
+                    <div class="error-message" id="register-username-error"></div>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Password</label>
+                    <input type="password" id="register-password" class="input" 
+                           placeholder="Create a password" required minlength="6" autocomplete="new-password">
+                    <div class="error-message" id="register-password-error"></div>
+                </div>
+                <div class="form-group">
+                    <label for="register-confirm">Confirm Password</label>
+                    <input type="password" id="register-confirm" class="input" 
+                           placeholder="Confirm your password" required autocomplete="new-password">
+                    <div class="error-message" id="register-confirm-error"></div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full" id="register-btn">
+                    Create Account
+                </button>
+                <div class="error-message" id="register-general-error" style="text-align: center; margin-top: var(--space-md);"></div>
+            </form>
+            
+            <div class="auth-footer">
+                <p>Study together, succeed together! 🎯</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/js/utils.js"></script>
+    <script src="/js/auth.js"></script>
+</body>
+</html>

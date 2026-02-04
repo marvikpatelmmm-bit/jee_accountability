@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - JEE Study Tracker</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .profile-page {
+            padding-top: 90px;
+            padding-bottom: var(--space-xl);
+            min-height: 100vh;
+            background: 
+                radial-gradient(ellipse at top left, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(16, 185, 129, 0.06) 0%, transparent 50%),
+                var(--bg-primary);
+        }
+
+        .profile-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--space-lg);
+        }
+
+        /* Profile Header */
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xl);
+            margin-bottom: var(--space-xl);
+            flex-wrap: wrap;
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            font-size: 48px;
+            flex-shrink: 0;
+        }
+
+        .profile-info {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .profile-info h1 {
+            margin-bottom: var(--space-xs);
+        }
+
+        .profile-username {
+            color: var(--text-muted);
+            font-size: 16px;
+            margin-bottom: var(--space-sm);
+        }
+
+        .profile-joined {
+            color: var(--text-dim);
+            font-size: 14px;
+            margin-bottom: var(--space-md);
+        }
+
+        .profile-streak {
+            display: flex;
+            gap: var(--space-lg);
+            flex-wrap: wrap;
+        }
+
+        .streak-badge {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: 8px 16px;
+            background: var(--glass-bg);
+            border-radius: var(--radius-full);
+            font-size: 14px;
+        }
+
+        .streak-badge.fire {
+            background: rgba(251, 191, 36, 0.1);
+            color: var(--accent-gold);
+        }
+
+        .streak-badge.trophy {
+            background: rgba(168, 85, 247, 0.1);
+            color: var(--accent-purple);
+        }
+
+        /* User Switcher */
+        .user-switcher {
+            margin-left: auto;
+        }
+
+        .user-switcher label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: var(--space-xs);
+        }
+
+        /* Stats Overview */
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-md);
+            margin-bottom: var(--space-xl);
+        }
+
+        @media (max-width: 992px) {
+            .stats-overview {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 576px) {
+            .stats-overview {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .stat-card-large {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--glass-border);
+            padding: var(--space-lg);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card-large:hover {
+            transform: translateY(-4px);
+            border-color: var(--glass-border-hover);
+        }
+
+        .stat-icon-large {
+            font-size: 36px;
+            margin-bottom: var(--space-sm);
+        }
+
+        .stat-value-large {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-label-large {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* Section Cards */
+        .section-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--glass-border);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-xl);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-lg);
+            flex-wrap: wrap;
+            gap: var(--space-md);
+        }
+
+        .section-title {
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        /* Subject Breakdown */
+        .subject-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-md);
+        }
+
+        @media (max-width: 768px) {
+            .subject-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .subject-card {
+            background: var(--glass-bg);
+            border-radius: var(--radius-lg);
+            padding: var(--space-md);
+            border: 1px solid var(--glass-border);
+        }
+
+        .subject-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-md);
+        }
+
+        .subject-icon {
+            font-size: 24px;
+        }
+
+        .subject-name {
+            font-weight: 600;
+        }
+
+        .subject-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: var(--space-md);
+        }
+
+        .subject-stat {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+        }
+
+        .subject-stat .label {
+            color: var(--text-muted);
+        }
+
+        .subject-stat .value {
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--glass-bg);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: var(--radius-full);
+            transition: width 0.5s ease;
+        }
+
+        .progress-fill.maths { background: var(--subject-maths); }
+        .progress-fill.physics { background: var(--subject-physics); }
+        .progress-fill.chemistry { background: var(--subject-chemistry); }
+
+        /* Today's Todo Section */
+        .todo-summary {
+            display: flex;
+            gap: var(--space-lg);
+            margin-bottom: var(--space-md);
+            flex-wrap: wrap;
+        }
+
+        .todo-stat {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-size: 14px;
+        }
+
+        .todo-stat.pending { color: var(--status-pending); }
+        .todo-stat.active { color: var(--status-active); }
+        .todo-stat.done { color: var(--status-completed); }
+
+        .todo-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            background: var(--glass-bg);
+            border-radius: var(--radius-md);
+            border-left: 3px solid transparent;
+        }
+
+        .todo-item.pending { border-left-color: var(--status-pending); }
+        .todo-item.in-progress { border-left-color: var(--status-active); }
+        .todo-item.completed { border-left-color: var(--status-completed); opacity: 0.7; }
+
+        .todo-status-icon {
+            font-size: 20px;
+        }
+
+        .todo-content {
+            flex: 1;
+        }
+
+        .todo-name {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .todo-meta {
+            display: flex;
+            gap: var(--space-md);
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Daily Summaries */
+        .summaries-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        .summary-card {
+            background: var(--glass-bg);
+            border-radius: var(--radius-lg);
+            padding: var(--space-md);
+            border: 1px solid var(--glass-border);
+        }
+
+        .summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-md);
+        }
+
+        .summary-date {
+            font-weight: 600;
+        }
+
+        .summary-rating {
+            font-size: 16px;
+        }
+
+        .summary-problems {
+            display: flex;
+            gap: var(--space-md);
+            margin-bottom: var(--space-md);
+            flex-wrap: wrap;
+        }
+
+        .problem-stat {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            padding: 4px 12px;
+            background: var(--glass-bg);
+            border-radius: var(--radius-full);
+        }
+
+        .problem-stat.maths { color: var(--subject-maths); }
+        .problem-stat.physics { color: var(--subject-physics); }
+        .problem-stat.chemistry { color: var(--subject-chemistry); }
+
+        .summary-topics, .summary-notes {
+            font-size: 14px;
+            margin-bottom: var(--space-sm);
+        }
+
+        .summary-topics strong, .summary-notes strong {
+            color: var(--text-secondary);
+        }
+
+        /* Task History */
+        .history-filters {
+            display: flex;
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+            flex-wrap: wrap;
+        }
+
+        .history-filters .input,
+        .history-filters .select {
+            width: auto;
+            min-width: 140px;
+        }
+
+        .history-table-container {
+            overflow-x: auto;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .history-table th {
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .history-table tr:hover {
+            background: var(--glass-bg);
+        }
+
+        /* Weekly Chart */
+        .week-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            height: 200px;
+            gap: var(--space-md);
+            padding: var(--space-md) 0;
+        }
+
+        .chart-bar-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .chart-bar {
+            width: 100%;
+            max-width: 50px;
+            background: var(--gradient-purple);
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            min-height: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .chart-bar:hover {
+            opacity: 0.8;
+        }
+
+        .chart-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .chart-value {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        /* No Data State */
+        .no-data {
+            text-align: center;
+            padding: var(--space-xl);
+            color: var(--text-muted);
+        }
+
+        .no-data-icon {
+            font-size: 48px;
+            margin-bottom: var(--space-md);
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="nav-logo">📚</span>
+            <span class="nav-title">JEE Tracker</span>
+        </div>
+        <div class="nav-links">
+            <a href="/dashboard.html" class="nav-link">Dashboard</a>
+            <a href="/timeline.html" class="nav-link">Timeline</a>
+            <a href="/leaderboard.html" class="nav-link">Leaderboard</a>
+            <a href="/profile.html" class="nav-link active">Profile</a>
+        </div>
+        <div class="nav-user">
+            <span class="user-name" id="current-user-name"></span>
+            <button class="btn btn-secondary btn-sm" id="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Main Profile Page -->
+    <main class="profile-page">
+        <div class="profile-container">
+            <!-- Profile Header -->
+            <div class="profile-header">
+                <div class="avatar profile-avatar gradient-purple" id="profile-avatar">?</div>
+                <div class="profile-info">
+                    <h1 id="profile-name">Loading...</h1>
+                    <p class="profile-username" id="profile-username">@username</p>
+                    <p class="profile-joined">Member since: <span id="profile-joined">-</span></p>
+                    <div class="profile-streak">
+                        <span class="streak-badge fire">
+                            🔥 Current Streak: <strong id="current-streak">0</strong> days
+                        </span>
+                        <span class="streak-badge trophy">
+                            🏆 Best Streak: <strong id="best-streak">0</strong> days
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- User Switcher -->
+                <div class="user-switcher">
+                    <label>View Profile:</label>
+                    <select id="user-select" class="select">
+                        <option value="">Loading users...</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Stats Overview -->
+            <div class="stats-overview">
+                <div class="stat-card-large">
+                    <div class="stat-icon-large">⏱️</div>
+                    <div class="stat-value-large" id="total-hours">0h</div>
+                    <div class="stat-label-large">Total Study Time</div>
+                </div>
+                <div class="stat-card-large">
+                    <div class="stat-icon-large">🎯</div>
+                    <div class="stat-value-large" id="total-problems">0</div>
+                    <div class="stat-label-large">Problems Solved</div>
+                </div>
+                <div class="stat-card-large">
+                    <div class="stat-icon-large">✅</div>
+                    <div class="stat-value-large" id="total-tasks">0</div>
+                    <div class="stat-label-large">Tasks Completed</div>
+                </div>
+                <div class="stat-card-large">
+                    <div class="stat-icon-large">📈</div>
+                    <div class="stat-value-large" id="success-rate">0%</div>
+                    <div class="stat-label-large">Success Rate</div>
+                </div>
+            </div>
+
+            <!-- This Week Stats -->
+            <div class="section-card">
+                <div class="section-header">
+                    <h2 class="section-title">📊 This Week's Performance</h2>
+                </div>
+                <div class="week-chart" id="week-chart">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Subject Breakdown -->
+            <div class="section-card">
+                <div class="section-header">
+                    <h2 class="section-title">📚 Subject-Wise Breakdown</h2>
+                </div>
+                <div class="subject-cards">
+                    <div class="subject-card">
+                        <div class="subject-header">
+                            <span class="subject-icon">📐</span>
+                            <span class="subject-name">Mathematics</span>
+                        </div>
+                        <div class="subject-stats">
+                            <div class="subject-stat">
+                                <span class="label">Problems:</span>
+                                <span class="value" id="maths-problems-total">0</span>
+                            </div>
+                            <div class="subject-stat">
+                                <span class="label">Hours:</span>
+                                <span class="value" id="maths-hours">0h</span>
+                            </div>
+                            <div class="subject-stat">
+                                <span class="label">Tasks:</span>
+                                <span class="value" id="maths-tasks">0</span>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill maths" id="maths-progress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="subject-card">
+                        <div class="subject-header">
+                            <span class="subject-icon">⚛️</span>
+                            <span class="subject-name">Physics</span>
+                        </div>
+                        <div class="subject-stats">
+                            <div class="subject-stat">
+                                <span class="label">Problems:</span>
+                                <span class="value" id="physics-problems-total">0</span>
+                            </div>
+                            <div class="subject-stat">
+                                <span class="label">Hours:</span>
+                                <span class="value" id="physics-hours">0h</span>
+                            </div>
+                            <div class="subject-stat">
+                                <span class="label">Tasks:</span>
+                                <span class="value" id="physics-tasks">0</span>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill physics" id="physics-progress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="subject-card">
+                        <div class="subject-header">
+                            <span class="subject-icon">🧪</span>
+                            <span class="subject-name">Chemistry</span>
+                        </div>
+                        <div class="subject-stats">
+                            <div class="subject-stat">
+                                <span class="label">Problems:</span>
+                                <span class="value" id="chemistry-problems-total">0</span>
+                            </div>
+                            <div class="subject-stat">
+                                <span class="label">Hours:</span>
+                                <span class="value" id="chemistry-hours">0h</span>
+                            </div>
+                            <div class="subject-stat">
+                                <span class="label">Tasks:</span>
+                                <span class="value" id="chemistry-tasks">0</span>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill chemistry" id="chemistry-progress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Today's Todo List (Visible to Everyone) -->
+            <div class="section-card">
+                <div class="section-header">
+                    <h2 class="section-title">📝 <span id="user-name-todo">User's</span> Today's Todo</h2>
+                    <div class="todo-summary">
+                        <span class="todo-stat pending">⏳ Pending: <strong id="todo-pending">0</strong></span>
+                        <span class="todo-stat active">▶️ Active: <strong id="todo-active">0</strong></span>
+                        <span class="todo-stat done">✅ Done: <strong id="todo-done">0</strong></span>
+                    </div>
+                </div>
+                <div class="todo-list" id="profile-todo-list">
+                    <!-- All tasks for today -->
+                </div>
+            </div>
+
+            <!-- Recent Daily Summaries (Visible to Everyone) -->
+            <div class="section-card">
+                <div class="section-header">
+                    <h2 class="section-title">📅 Recent Daily Summaries</h2>
+                </div>
+                <div class="summaries-list" id="summaries-list">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Task History -->
+            <div class="section-card">
+                <div class="section-header">
+                    <h2 class="section-title">📋 Task History</h2>
+                </div>
+                <div class="history-filters">
+                    <input type="date" id="history-start" class="input">
+                    <span style="color: var(--text-muted);">to</span>
+                    <input type="date" id="history-end" class="input">
+                    <select id="history-subject" class="select">
+                        <option value="">All Subjects</option>
+                        <option value="Maths">Maths</option>
+                        <option value="Physics">Physics</option>
+                        <option value="Chemistry">Chemistry</option>
+                    </select>
+                    <button class="btn btn-primary" id="apply-filters">Apply Filters</button>
+                </div>
+                <div class="history-table-container">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Task</th>
+                                <th>Subject</th>
+                                <th>Est.</th>
+                                <th>Actual</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-tbody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/profile.js"></script>
+</body>
+</html>

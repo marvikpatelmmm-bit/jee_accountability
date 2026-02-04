@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - JEE Study Tracker</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        /* Dashboard Layout - Modern Single Column with Sections */
+        .dashboard-page {
+            padding-top: 90px;
+            padding-bottom: var(--space-xl);
+            min-height: 100vh;
+            background: 
+                radial-gradient(ellipse at top right, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom left, rgba(59, 130, 246, 0.06) 0%, transparent 50%),
+                var(--bg-primary);
+        }
+
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--space-lg);
+        }
+
+        /* Welcome Section */
+        .welcome-section {
+            margin-bottom: var(--space-xl);
+        }
+
+        .welcome-title {
+            font-size: 32px;
+            margin-bottom: var(--space-xs);
+        }
+
+        .welcome-subtitle {
+            color: var(--text-muted);
+        }
+
+        .date-display {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-sm);
+            background: var(--glass-bg);
+            padding: 8px 16px;
+            border-radius: var(--radius-full);
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: var(--space-md);
+        }
+
+        /* Hero Section - Active Task */
+        .hero-section {
+            margin-bottom: var(--space-xl);
+        }
+
+        .active-task-hero {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(59, 130, 246, 0.1) 100%);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            padding: var(--space-xl);
+        }
+
+        .active-task-hero.no-active {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+        }
+
+        .hero-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-xl);
+        }
+
+        @media (max-width: 768px) {
+            .hero-content {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        /* Progress Ring */
+        .progress-ring-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            flex-shrink: 0;
+        }
+
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+
+        .ring-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 10;
+        }
+
+        .ring-progress {
+            fill: none;
+            stroke: url(#progressGradient);
+            stroke-width: 10;
+            stroke-linecap: round;
+            stroke-dasharray: 565.48;
+            stroke-dashoffset: 565.48;
+            transition: stroke-dashoffset 1s linear;
+        }
+
+        .ring-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .timer-elapsed {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .timer-divider {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin: 4px 0;
+        }
+
+        .timer-estimated {
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        .timer-status {
+            display: inline-block;
+            margin-top: var(--space-sm);
+            padding: 4px 12px;
+            border-radius: var(--radius-full);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .timer-status.on-track {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+        }
+
+        .timer-status.warning {
+            background: rgba(251, 191, 36, 0.2);
+            color: var(--accent-gold);
+        }
+
+        .timer-status.overtime {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+        }
+
+        /* Task Info */
+        .task-info-section {
+            flex: 1;
+        }
+
+        .task-subject {
+            margin-bottom: var(--space-sm);
+        }
+
+        .task-name {
+            font-size: 28px;
+            margin-bottom: var(--space-md);
+        }
+
+        .task-controls {
+            display: flex;
+            gap: var(--space-md);
+            flex-wrap: wrap;
+        }
+
+        .task-note {
+            margin-top: var(--space-md);
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Quick Stats Bar */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-md);
+            margin-bottom: var(--space-xl);
+        }
+
+        @media (max-width: 768px) {
+            .stats-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .stat-card-mini {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--glass-border);
+            padding: var(--space-md);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card-mini:hover {
+            border-color: var(--glass-border-hover);
+            transform: translateY(-2px);
+        }
+
+        .stat-value-mini {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .stat-label-mini {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Live Feed Section */
+        .live-feed-section {
+            margin-bottom: var(--space-xl);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-lg);
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-size: 20px;
+        }
+
+        .live-feed-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: var(--space-md);
+        }
+
+        .feed-user-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--glass-border);
+            padding: var(--space-md);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .feed-user-card:hover {
+            border-color: var(--glass-border-hover);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .feed-user-card.active {
+            border-color: var(--accent-green);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, var(--bg-card) 100%);
+        }
+
+        .feed-user-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            margin-bottom: var(--space-md);
+        }
+
+        .feed-user-info h4 {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .feed-user-info .last-seen {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .feed-user-activity {
+            margin-bottom: var(--space-md);
+        }
+
+        .activity-indicator {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-xs);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .activity-text {
+            font-size: 13px;
+            color: var(--accent-green);
+            font-weight: 500;
+        }
+
+        .activity-task {
+            font-size: 14px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .activity-subject {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .idle-text {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .feed-user-stats {
+            display: flex;
+            gap: var(--space-md);
+            font-size: 13px;
+            color: var(--text-secondary);
+            padding-top: var(--space-md);
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .feed-user-stats span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Tasks Section */
+        .tasks-section {
+            margin-bottom: var(--space-xl);
+        }
+
+        .tasks-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-lg);
+            flex-wrap: wrap;
+            gap: var(--space-md);
+        }
+
+        .task-filters {
+            display: flex;
+            gap: var(--space-sm);
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        .filter-btn.active {
+            background: var(--gradient-purple);
+            border-color: transparent;
+            color: white;
+        }
+
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        .task-item {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--glass-border);
+            padding: var(--space-md);
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            transition: all 0.3s ease;
+        }
+
+        .task-item:hover {
+            border-color: var(--glass-border-hover);
+        }
+
+        .task-item.in-progress {
+            border-color: var(--accent-green);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, var(--bg-card) 100%);
+        }
+
+        .task-item.completed-ontime {
+            opacity: 0.7;
+        }
+
+        .task-item.completed-delayed {
+            opacity: 0.7;
+            border-left: 3px solid var(--accent-red);
+        }
+
+        .task-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .task-icon.maths { background: rgba(249, 115, 22, 0.2); }
+        .task-icon.physics { background: rgba(139, 92, 246, 0.2); }
+        .task-icon.chemistry { background: rgba(16, 185, 129, 0.2); }
+        .task-icon.other { background: rgba(100, 116, 139, 0.2); }
+
+        .task-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .task-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .task-meta {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .task-actions {
+            display: flex;
+            gap: var(--space-sm);
+        }
+
+        .task-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-md);
+            border: none;
+            background: var(--glass-bg);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .task-btn:hover {
+            background: var(--glass-border);
+            color: var(--text-primary);
+        }
+
+        .task-btn.start:hover {
+            background: var(--accent-green);
+            color: white;
+        }
+
+        .task-btn.stop:hover {
+            background: var(--accent-orange);
+            color: white;
+        }
+
+        .task-btn.delete:hover {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        /* Empty Task State */
+        .empty-tasks {
+            text-align: center;
+            padding: var(--space-2xl);
+            color: var(--text-muted);
+        }
+
+        .empty-tasks-icon {
+            font-size: 48px;
+            margin-bottom: var(--space-md);
+            opacity: 0.5;
+        }
+
+        /* Group Stats Section */
+        .group-stats-section {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--glass-border);
+            padding: var(--space-lg);
+        }
+
+        .group-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-lg);
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .group-stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .group-stat-item {
+            padding: var(--space-md);
+        }
+
+        .group-stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .group-stat-label {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* Floating Action Buttons */
+        .fab-container {
+            position: fixed;
+            bottom: var(--space-xl);
+            right: var(--space-xl);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            z-index: 100;
+        }
+
+        .fab {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: none;
+            background: var(--gradient-purple);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: var(--shadow-purple);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 28px rgba(168, 85, 247, 0.6);
+        }
+
+        .fab.secondary {
+            background: var(--gradient-blue);
+            box-shadow: var(--shadow-blue);
+        }
+
+        .fab.secondary:hover {
+            box-shadow: 0 6px 28px rgba(59, 130, 246, 0.6);
+        }
+
+        /* Modal Styles */
+        .task-entry-row {
+            display: grid;
+            grid-template-columns: 1fr 140px 140px 40px;
+            gap: var(--space-sm);
+            align-items: center;
+            margin-bottom: var(--space-md);
+            padding: var(--space-md);
+            background: var(--glass-bg);
+            border-radius: var(--radius-md);
+        }
+
+        @media (max-width: 768px) {
+            .task-entry-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .time-input-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .time-input-group input {
+            width: 50px;
+            text-align: center;
+            padding: 8px;
+        }
+
+        .time-separator {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .btn-remove-task {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-md);
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-remove-task:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+        }
+
+        .plan-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-md);
+            background: var(--glass-bg);
+            border-radius: var(--radius-md);
+            margin-top: var(--space-md);
+        }
+
+        .total-time {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-purple);
+        }
+
+        /* End Day Modal */
+        .end-day-summary {
+            background: var(--glass-bg);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .summary-row:last-child {
+            border-bottom: none;
+        }
+
+        .summary-row.success-rate {
+            font-weight: 600;
+            color: var(--accent-purple);
+        }
+
+        .problems-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        @media (max-width: 768px) {
+            .problems-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .star-rating {
+            display: flex;
+            gap: var(--space-sm);
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .star {
+            opacity: 0.3;
+            transition: all 0.2s ease;
+        }
+
+        .star.active {
+            opacity: 1;
+        }
+
+        .star:hover {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="nav-logo">📚</span>
+            <span class="nav-title">JEE Tracker</span>
+        </div>
+        <div class="nav-links">
+            <a href="/dashboard.html" class="nav-link active">Dashboard</a>
+            <a href="/timeline.html" class="nav-link">Timeline</a>
+            <a href="/leaderboard.html" class="nav-link">Leaderboard</a>
+            <a href="/profile.html" class="nav-link">Profile</a>
+        </div>
+        <div class="nav-user">
+            <span class="user-name" id="current-user-name"></span>
+            <button class="btn btn-secondary btn-sm" id="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Main Dashboard -->
+    <main class="dashboard-page">
+        <div class="dashboard-container">
+            <!-- Welcome Section -->
+            <section class="welcome-section">
+                <h1 class="welcome-title">Welcome back, <span id="welcome-name">Student</span>! 👋</h1>
+                <p class="welcome-subtitle">Ready to crush your JEE goals today?</p>
+                <div class="date-display">
+                    <span>📅</span>
+                    <span id="today-date">Loading...</span>
+                </div>
+            </section>
+
+            <!-- Quick Stats Bar -->
+            <section class="stats-bar">
+                <div class="stat-card-mini">
+                    <div class="stat-value-mini" id="stat-hours">0h</div>
+                    <div class="stat-label-mini">Study Time</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div class="stat-value-mini" id="stat-tasks">0</div>
+                    <div class="stat-label-mini">Tasks Done</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div class="stat-value-mini" id="stat-rate">0%</div>
+                    <div class="stat-label-mini">Success Rate</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div class="stat-value-mini" id="stat-streak">0</div>
+                    <div class="stat-label-mini">Day Streak 🔥</div>
+                </div>
+            </section>
+
+            <!-- Hero Section - Active Task -->
+            <section class="hero-section">
+                <div class="card active-task-hero" id="active-task-card">
+                    <div id="no-active-task">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">⏸️</div>
+                            <div class="empty-state-title">No Active Task</div>
+                            <div class="empty-state-text">
+                                Start a task from your todo list to begin tracking
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="active-task-content" style="display: none;">
+                        <div class="hero-content">
+                            <!-- Progress Ring -->
+                            <div class="progress-ring-container">
+                                <svg class="progress-ring" width="200" height="200">
+                                    <defs>
+                                        <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stop-color="#a855f7"/>
+                                            <stop offset="100%" stop-color="#3b82f6"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <circle class="ring-bg" cx="100" cy="100" r="90"/>
+                                    <circle class="ring-progress" cx="100" cy="100" r="90" id="ring-progress"/>
+                                </svg>
+                                <div class="ring-content">
+                                    <div class="timer-elapsed" id="timer-elapsed">00:00</div>
+                                    <div class="timer-divider">/</div>
+                                    <div class="timer-estimated" id="timer-estimated">30:00</div>
+                                    <div class="timer-status on-track" id="timer-status">On Track</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Task Info -->
+                            <div class="task-info-section">
+                                <span class="subject-tag" id="active-task-subject">Physics</span>
+                                <h2 class="task-name" id="active-task-name">Task Name</h2>
+                                <div class="task-controls">
+                                    <button class="btn btn-success" id="complete-task-btn">
+                                        ✅ Mark Complete
+                                    </button>
+                                    <button class="btn btn-secondary" id="stop-task-btn">
+                                        ⏸️ Stop Task
+                                    </button>
+                                </div>
+                                <p class="task-note">
+                                    💡 Starting another task will auto-stop this one
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Live Feed Section -->
+            <section class="live-feed-section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        👥 Live Feed
+                        <span class="live-indicator">
+                            <span class="pulse"></span> Live
+                        </span>
+                    </h2>
+                </div>
+                <div class="live-feed-grid" id="live-feed">
+                    <!-- Populated dynamically -->
+                </div>
+            </section>
+
+            <!-- Tasks Section -->
+            <section class="tasks-section">
+                <div class="tasks-header">
+                    <h2 class="section-title">📝 Today's Tasks</h2>
+                    <div class="task-filters">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="pending">Pending</button>
+                        <button class="filter-btn" data-filter="completed">Completed</button>
+                    </div>
+                </div>
+                <div class="task-list" id="task-list">
+                    <!-- Populated dynamically -->
+                </div>
+            </section>
+
+            <!-- Group Stats Section -->
+            <section class="group-stats-section">
+                <h2 class="section-title">👥 Group Activity Today</h2>
+                <div class="group-stats-grid">
+                    <div class="group-stat-item">
+                        <div class="group-stat-value" id="group-tasks">0</div>
+                        <div class="group-stat-label">Total Tasks Done</div>
+                    </div>
+                    <div class="group-stat-item">
+                        <div class="group-stat-value" id="group-hours">0h</div>
+                        <div class="group-stat-label">Total Hours</div>
+                    </div>
+                    <div class="group-stat-item">
+                        <div class="group-stat-value" id="group-rate">0%</div>
+                        <div class="group-stat-label">Avg Success Rate</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Floating Action Buttons -->
+    <div class="fab-container">
+        <button class="fab" id="plan-day-btn" title="Plan Your Day">+</button>
+        <button class="fab secondary" id="end-day-btn" title="End Day">🌙</button>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="modal-overlay">
+        <!-- Plan Day Modal -->
+        <div class="modal" id="plan-day-modal">
+            <div class="modal-header">
+                <h2>📋 Plan Your Day</h2>
+                <button class="modal-close" data-modal-close>&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="task-entries">
+                    <!-- Task entry rows added dynamically -->
+                </div>
+                <button class="btn btn-secondary btn-full" id="add-task-row">
+                    ➕ Add Another Task
+                </button>
+                <div class="plan-summary">
+                    <span>Total Estimated Time:</span>
+                    <span class="total-time" id="plan-total-time">0h 0m</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button class="btn btn-primary" id="save-tasks-btn">Save Tasks</button>
+            </div>
+        </div>
+
+        <!-- End Day Modal -->
+        <div class="modal" id="end-day-modal">
+            <div class="modal-header">
+                <h2>🌙 End Your Day</h2>
+                <button class="modal-close" data-modal-close>&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Auto Summary -->
+                <div class="end-day-summary" id="end-day-summary">
+                    <h3>Today's Completion</h3>
+                    <div class="summary-row">
+                        <span>✅ On-time:</span>
+                        <span id="summary-ontime">0</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>⏰ Delayed:</span>
+                        <span id="summary-delayed">0</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>⏳ Incomplete:</span>
+                        <span id="summary-incomplete">0</span>
+                    </div>
+                    <div class="summary-row success-rate">
+                        <span>Success Rate:</span>
+                        <span id="summary-rate">0%</span>
+                    </div>
+                </div>
+                
+                <!-- Problems Solved -->
+                <div class="form-section">
+                    <h3>Problems Solved Today</h3>
+                    <div class="problems-grid">
+                        <div class="form-group">
+                            <label>📐 Maths</label>
+                            <input type="number" id="maths-problems" class="input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>⚛️ Physics</label>
+                            <input type="number" id="physics-problems" class="input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>🧪 Chemistry</label>
+                            <input type="number" id="chemistry-problems" class="input" min="0" value="0">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Topics Covered -->
+                <div class="form-group">
+                    <label>📚 Topics/Chapters Covered</label>
+                    <textarea id="topics-covered" class="textarea" rows="3"
+                              placeholder="e.g., Integration, Rotational Motion, Organic Reactions"></textarea>
+                </div>
+                
+                <!-- Notes -->
+                <div class="form-group">
+                    <label>📝 Notes/Reflections (Optional)</label>
+                    <textarea id="day-notes" class="textarea" rows="2"
+                              placeholder="How was your day? Any insights?"></textarea>
+                </div>
+                
+                <!-- Self Rating -->
+                <div class="form-group">
+                    <label>⭐ Self Rating</label>
+                    <div class="star-rating" id="star-rating">
+                        <span class="star" data-rating="1">⭐</span>
+                        <span class="star" data-rating="2">⭐</span>
+                        <span class="star" data-rating="3">⭐</span>
+                        <span class="star" data-rating="4">⭐</span>
+                        <span class="star" data-rating="5">⭐</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button class="btn btn-primary" id="submit-end-day">End Day & Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>

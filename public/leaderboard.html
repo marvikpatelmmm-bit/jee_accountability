@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard - JEE Study Tracker</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .leaderboard-page {
+            padding-top: 90px;
+            padding-bottom: var(--space-xl);
+            min-height: 100vh;
+            background: 
+                radial-gradient(ellipse at top center, rgba(251, 191, 36, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom left, rgba(168, 85, 247, 0.06) 0%, transparent 50%),
+                var(--bg-primary);
+        }
+
+        .leaderboard-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 var(--space-lg);
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: var(--space-xl);
+        }
+
+        .page-header h1 {
+            font-size: 36px;
+            margin-bottom: var(--space-sm);
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+        }
+
+        /* Period Tabs */
+        .period-tabs {
+            display: flex;
+            justify-content: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-lg);
+        }
+
+        .tab {
+            padding: 10px 24px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-full);
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            background: var(--gradient-purple);
+            border-color: transparent;
+            color: white;
+        }
+
+        /* Category Tabs */
+        .category-tabs {
+            display: flex;
+            justify-content: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-xl);
+            flex-wrap: wrap;
+        }
+
+        .cat-tab {
+            padding: 12px 20px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .cat-tab:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        .cat-tab.active {
+            background: var(--bg-card);
+            border-color: var(--accent-purple);
+            color: var(--text-primary);
+        }
+
+        /* Leaderboard Cards */
+        .leaderboard-content {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        .leaderboard-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--glass-border);
+            padding: var(--space-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--space-lg);
+            transition: all 0.3s ease;
+        }
+
+        .leaderboard-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--glass-border-hover);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .leaderboard-card.rank-1 {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.05) 100%);
+            border: 2px solid var(--accent-gold);
+            box-shadow: 0 8px 32px rgba(251, 191, 36, 0.2);
+        }
+
+        .leaderboard-card.rank-2 {
+            background: linear-gradient(135deg, rgba(203, 213, 225, 0.15) 0%, rgba(203, 213, 225, 0.05) 100%);
+            border: 2px solid #cbd5e1;
+        }
+
+        .leaderboard-card.rank-3 {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.05) 100%);
+            border: 2px solid var(--accent-orange);
+        }
+
+        .rank-badge {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .rank-badge.gold {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: #000;
+        }
+
+        .rank-badge.silver {
+            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+            color: #000;
+        }
+
+        .rank-badge.bronze {
+            background: linear-gradient(135deg, #fdba74 0%, #f97316 100%);
+            color: #000;
+        }
+
+        .rank-badge.other {
+            background: var(--glass-bg);
+            color: var(--text-muted);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            flex: 1;
+        }
+
+        .user-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            font-size: 22px;
+        }
+
+        .user-details h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .user-details p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .rank-stats {
+            text-align: right;
+        }
+
+        .primary-stat {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .secondary-stats {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Podium for top 3 */
+        .podium-section {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: var(--space-md);
+            margin-bottom: var(--space-xl);
+            padding: var(--space-xl) 0;
+        }
+
+        .podium-item {
+            text-align: center;
+        }
+
+        .podium-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0 auto var(--space-sm);
+            font-size: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .podium-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .podium-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .podium-bar {
+            width: 120px;
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+            margin-top: var(--space-md);
+        }
+
+        .podium-bar.first {
+            height: 120px;
+            background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+        }
+
+        .podium-bar.second {
+            height: 90px;
+            background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
+        }
+
+        .podium-bar.third {
+            height: 70px;
+            background: linear-gradient(180deg, #fdba74 0%, #f97316 100%);
+        }
+
+        /* Loading State */
+        .loading-state {
+            text-align: center;
+            padding: var(--space-2xl);
+        }
+
+        .loading-state .spinner {
+            margin: 0 auto var(--space-md);
+        }
+
+        /* Empty State */
+        .empty-leaderboard {
+            text-align: center;
+            padding: var(--space-2xl);
+            color: var(--text-muted);
+        }
+
+        .empty-leaderboard-icon {
+            font-size: 64px;
+            margin-bottom: var(--space-md);
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="nav-logo">📚</span>
+            <span class="nav-title">JEE Tracker</span>
+        </div>
+        <div class="nav-links">
+            <a href="/dashboard.html" class="nav-link">Dashboard</a>
+            <a href="/timeline.html" class="nav-link">Timeline</a>
+            <a href="/leaderboard.html" class="nav-link active">Leaderboard</a>
+            <a href="/profile.html" class="nav-link">Profile</a>
+        </div>
+        <div class="nav-user">
+            <span class="user-name" id="current-user-name"></span>
+            <button class="btn btn-secondary btn-sm" id="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Main Leaderboard Page -->
+    <main class="leaderboard-page">
+        <div class="leaderboard-container">
+            <div class="page-header">
+                <h1>🏆 Leaderboard</h1>
+                <p>Compete with your friends and climb the ranks!</p>
+            </div>
+
+            <!-- Period Tabs -->
+            <div class="period-tabs">
+                <button class="tab active" data-period="weekly">This Week</button>
+                <button class="tab" data-period="monthly">This Month</button>
+                <button class="tab" data-period="alltime">All Time</button>
+            </div>
+
+            <!-- Category Tabs -->
+            <div class="category-tabs">
+                <button class="cat-tab active" data-category="hours">
+                    ⏱️ Study Hours
+                </button>
+                <button class="cat-tab" data-category="problems">
+                    🎯 Problems
+                </button>
+                <button class="cat-tab" data-category="success">
+                    ✅ Success Rate
+                </button>
+                <button class="cat-tab" data-category="tasks">
+                    📋 Tasks
+                </button>
+            </div>
+
+            <!-- Leaderboard Content -->
+            <div class="leaderboard-content" id="leaderboard-content">
+                <div class="loading-state">
+                    <div class="spinner spinner-lg"></div>
+                    <p>Loading leaderboard...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/leaderboard.js"></script>
+</body>
+</html>
