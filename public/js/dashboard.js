@@ -142,7 +142,12 @@ function renderTasks() {
     
     let filteredTasks = todaysTasks;
     
-    if (currentFilter === 'pending') {
+    // FIX 1: If filter is 'all', HIDE completed tasks to reduce clutter
+    if (currentFilter === 'all') {
+        filteredTasks = todaysTasks.filter(t => 
+            t.status !== 'completed_ontime' && t.status !== 'completed_delayed'
+        );
+    } else if (currentFilter === 'pending') {
         filteredTasks = todaysTasks.filter(t => t.status === 'pending');
     } else if (currentFilter === 'completed') {
         filteredTasks = todaysTasks.filter(t => 
@@ -150,11 +155,23 @@ function renderTasks() {
         );
     }
     
+    // Handle empty states
     if (filteredTasks.length === 0) {
+        if (currentFilter === 'all' && todaysTasks.length > 0) {
+             taskList.innerHTML = `
+                <div class="empty-tasks">
+                    <div class="empty-tasks-icon">🎉</div>
+                    <div class="empty-state-title">All active tasks done!</div>
+                    <div class="empty-state-text">Check the "Completed" tab to see history.</div>
+                </div>
+            `;
+            return;
+        }
+
         taskList.innerHTML = `
             <div class="empty-tasks">
                 <div class="empty-tasks-icon">📝</div>
-                <div class="empty-state-title">No tasks yet</div>
+                <div class="empty-state-title">No tasks found</div>
                 <div class="empty-state-text">Click the + button to plan your day!</div>
             </div>
         `;
@@ -164,23 +181,43 @@ function renderTasks() {
     taskList.innerHTML = filteredTasks.map(task => {
         const subjectLower = task.subject.toLowerCase();
         const isActive = task.status === 'in_progress';
+        // FIX 2: Check if task is paused or stopped
+        const isPaused = task.status === 'paused' || task.status === 'stopped';
         const isCompleted = task.status === 'completed_ontime' || task.status === 'completed_delayed';
         const isDelayed = task.status === 'completed_delayed';
         
         let actions = '';
-        if (task.status === 'pending') {
+        
+        // FIX 3: LOGIC TO SHOW RESUME BUTTON
+        if (isActive) {
+            // Running: Show Pause
             actions = `
-                <button class="task-btn start" onclick="startTask(${task.id})" title="Start">
-                    ▶️
+                <button class="task-btn stop" onclick="stopTask(${task.id})" title="Stop">
+                    ⏸️
                 </button>
+                <button class="task-btn success" onclick="completeTaskById(${task.id})" title="Done">
+                    ✅
+                </button>
+            `;
+        } else if (isCompleted) {
+            // Completed: Show only Delete
+             actions = `
                 <button class="task-btn delete" onclick="deleteTask(${task.id})" title="Delete">
                     🗑️
                 </button>
             `;
-        } else if (isActive) {
+        } else {
+            // Pending OR Paused OR Stopped -> Show START (Resume)
             actions = `
-                <button class="task-btn stop" onclick="stopTask(${task.id})" title="Stop">
-                    ⏸️
+                <button class="task-btn start" onclick="startTask(${task.id})" title="${isPaused ? 'Resume' : 'Start'}">
+                    ▶️
+                </button>
+                ${task.status !== 'pending' ? `
+                <button class="task-btn success" onclick="completeTaskById(${task.id})" title="Done">
+                    ✅
+                </button>` : ''}
+                <button class="task-btn delete" onclick="deleteTask(${task.id})" title="Delete">
+                    🗑️
                 </button>
             `;
         }
@@ -647,5 +684,11 @@ window.addEventListener('beforeunload', () => {
     if (liveFeedInterval) {
         clearInterval(liveFeedInterval);
     }
-    stopTimer();
+    stopTimer(); // <--- Put this INSIDE the brackets
 });
+
+// Helper to complete task from list view
+async function completeTaskById(id) {
+    activeTaskId = id; 
+    await completeActiveTask();
+}
