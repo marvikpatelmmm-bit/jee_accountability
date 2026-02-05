@@ -1,9 +1,10 @@
 /* ============================================
-   JEE STUDY TRACKER - AUTHENTICATION
+   JEE STUDY TRACKER - AUTHENTICATION (UPGRADED)
    ============================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Tab switching
+    
+    // --- 1. Tab Switching Logic ---
     const authTabs = document.querySelectorAll('.auth-tab');
     const authForms = document.querySelectorAll('.auth-form');
     
@@ -11,11 +12,11 @@ document.addEventListener('DOMContentLoaded', () => {
         tab.addEventListener('click', () => {
             const targetTab = tab.dataset.tab;
             
-            // Update tabs
+            // Update tabs UI
             authTabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             
-            // Update forms
+            // Update forms UI
             authForms.forEach(form => {
                 form.classList.remove('active');
                 if (form.id === `${targetTab}-form`) {
@@ -23,12 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             
-            // Clear errors
             clearErrors();
         });
     });
     
-    // Login form
+    // --- 2. Login Logic ---
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
@@ -37,27 +37,14 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const username = document.getElementById('login-username').value.trim();
             const password = document.getElementById('login-password').value;
+            const loginBtn = document.getElementById('login-btn');
             
             // Validation
-            let hasError = false;
+            if (!username) return showError('login-username', 'Username is required');
+            if (!password) return showError('login-password', 'Password is required');
             
-            if (!username) {
-                showError('login-username', 'Username is required');
-                hasError = true;
-            }
-            
-            if (!password) {
-                showError('login-password', 'Password is required');
-                hasError = true;
-            }
-            
-            if (hasError) return;
-            
-            // Show loading
-            const loginBtn = document.getElementById('login-btn');
-            const originalText = loginBtn.textContent;
-            loginBtn.textContent = 'Logging in...';
-            loginBtn.disabled = true;
+            // Set Loading State
+            setLoading(loginBtn, true, 'Logging in...');
             
             try {
                 const response = await fetch('/api/login', {
@@ -69,22 +56,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 
                 if (response.ok && data.success) {
-                    showToast('Login successful!', 'success');
+                    safeShowToast('Login successful!', 'success');
                     window.location.href = '/dashboard.html';
                 } else {
                     showError('login-general', data.error || 'Invalid credentials');
-                    loginBtn.textContent = originalText;
-                    loginBtn.disabled = false;
+                    setLoading(loginBtn, false, 'Login');
                 }
             } catch (error) {
-                showError('login-general', 'Network error. Please try again.');
-                loginBtn.textContent = originalText;
-                loginBtn.disabled = false;
+                console.error('Login Error:', error);
+                showError('login-general', 'Server unreachable. Check your connection.');
+                setLoading(loginBtn, false, 'Login');
             }
         });
     }
     
-    // Register form
+    // --- 3. Register Logic ---
     const registerForm = document.getElementById('register-form');
     if (registerForm) {
         registerForm.addEventListener('submit', async (e) => {
@@ -95,43 +81,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const username = document.getElementById('register-username').value.trim();
             const password = document.getElementById('register-password').value;
             const confirm = document.getElementById('register-confirm').value;
-            
-            // Validation
-            let hasError = false;
-            
-            if (!name) {
-                showError('register-name', 'Name is required');
-                hasError = true;
-            }
-            
-            if (!username) {
-                showError('register-username', 'Username is required');
-                hasError = true;
-            } else if (username.length < 3) {
-                showError('register-username', 'Username must be at least 3 characters');
-                hasError = true;
-            }
-            
-            if (!password) {
-                showError('register-password', 'Password is required');
-                hasError = true;
-            } else if (password.length < 6) {
-                showError('register-password', 'Password must be at least 6 characters');
-                hasError = true;
-            }
-            
-            if (password !== confirm) {
-                showError('register-confirm', 'Passwords do not match');
-                hasError = true;
-            }
-            
-            if (hasError) return;
-            
-            // Show loading
             const registerBtn = document.getElementById('register-btn');
-            const originalText = registerBtn.textContent;
-            registerBtn.textContent = 'Creating account...';
-            registerBtn.disabled = true;
+            
+            // Strict Validation
+            if (!name) return showError('register-name', 'Name is required');
+            if (!username) return showError('register-username', 'Username is required');
+            if (username.length < 3) return showError('register-username', 'Username too short (min 3 chars)');
+            if (!password) return showError('register-password', 'Password is required');
+            if (password.length < 6) return showError('register-password', 'Password too short (min 6 chars)');
+            if (password !== confirm) return showError('register-confirm', 'Passwords do not match');
+            
+            // Set Loading State
+            setLoading(registerBtn, true, 'Creating Account...');
             
             try {
                 const response = await fetch('/api/register', {
@@ -143,42 +104,96 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 
                 if (response.ok && data.success) {
-                    showToast('Account created successfully!', 'success');
-                    window.location.href = '/dashboard.html';
+                    safeShowToast('Account created! Redirecting...', 'success');
+                    // Automatically log them in or send to dashboard
+                    setTimeout(() => {
+                        window.location.href = '/dashboard.html';
+                    }, 1000);
                 } else {
                     showError('register-general', data.error || 'Registration failed');
-                    registerBtn.textContent = originalText;
-                    registerBtn.disabled = false;
+                    setLoading(registerBtn, false, 'Create Account');
                 }
             } catch (error) {
-                showError('register-general', 'Network error. Please try again.');
-                registerBtn.textContent = originalText;
-                registerBtn.disabled = false;
+                console.error('Register Error:', error);
+                showError('register-general', 'Server error. Please try again later.');
+                setLoading(registerBtn, false, 'Create Account');
             }
         });
     }
     
-    // Check if already logged in
-    checkAuth().then(user => {
-        if (user && window.location.pathname === '/index.html' || window.location.pathname === '/') {
+    // --- 4. Auto-Redirect Check (THE FIX) ---
+    // We define a local checkAuth here to ensure this works even if utils.js fails
+    const verifySession = async () => {
+        try {
+            const res = await fetch('/api/current-user');
+            if (res.ok) {
+                return await res.json();
+            }
+            return null;
+        } catch (e) {
+            return null;
+        }
+    };
+
+    verifySession().then(user => {
+        const path = window.location.pathname;
+        
+        // CRITICAL FIX: Parentheses added around the OR (||) logic
+        // Only redirect if USER exists AND (path is index OR path is /)
+        if (user && (path === '/index.html' || path === '/')) {
+            console.log('User already logged in, redirecting to dashboard');
             window.location.href = '/dashboard.html';
         }
     });
 });
 
-// Show error message
+// --- Helper Functions ---
+
 function showError(fieldId, message) {
     const errorEl = document.getElementById(`${fieldId}-error`);
     if (errorEl) {
         errorEl.textContent = message;
         errorEl.classList.add('show');
+        // Shake animation for visibility
+        const inputField = document.getElementById(fieldId);
+        if(inputField) {
+            inputField.classList.add('input-error');
+            setTimeout(() => inputField.classList.remove('input-error'), 500);
+        }
     }
 }
 
-// Clear all errors
 function clearErrors() {
     document.querySelectorAll('.error-message').forEach(el => {
         el.textContent = '';
         el.classList.remove('show');
     });
+    document.querySelectorAll('input').forEach(el => {
+        el.classList.remove('input-error');
+    });
+}
+
+// Button loading state helper
+function setLoading(button, isLoading, text) {
+    if (isLoading) {
+        button.dataset.originalText = button.textContent; // Save original text
+        button.textContent = text;
+        button.disabled = true;
+        button.style.opacity = '0.7';
+        button.style.cursor = 'not-allowed';
+    } else {
+        button.textContent = text || button.dataset.originalText || 'Submit';
+        button.disabled = false;
+        button.style.opacity = '1';
+        button.style.cursor = 'pointer';
+    }
+}
+
+// Safe Toast wrapper (checks if showToast exists from utils.js, else uses alert)
+function safeShowToast(msg, type) {
+    if (typeof showToast === 'function') {
+        showToast(msg, type);
+    } else {
+        console.log(`[${type.toUpperCase()}] ${msg}`);
+    }
 }
