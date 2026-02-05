@@ -1,117 +1,107 @@
 const express = require('express');
 const session = require('express-session');
-const bcrypt = require('bcrypt');
-const sqlite3 = require('sqlite3').verbose();
+const bcrypt = require('bcryptjs'); // standard bcrypt sometimes has issues in some envs, bcryptjs is safer, but bcrypt is fine if it works for you.
+const { Pool } = require('pg');
 const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Database setup
-const db = new sqlite3.Database('./jee_study.db', (err) => {
-    if (err) {
-        console.error('Database connection error:', err);
-    } else {
-        console.log('Connected to SQLite database');
-        initDatabase();
-    }
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
+// Helper wrapper for DB queries
+// This replaces your old dbRun, dbGet, dbAll with a unified Postgres approach
+const db = {
+    query: (text, params) => pool.query(text, params)
+};
+
 // Initialize database tables
-function initDatabase() {
-    db.exec(`
-        -- Users table
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            name TEXT NOT NULL,
-            profile_picture TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            current_streak INTEGER DEFAULT 0,
-            best_streak INTEGER DEFAULT 0,
-            last_active_date DATE
-        );
+const initDatabase = async () => {
+    try {
+        await db.query(`
+            -- Users table
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                name TEXT NOT NULL,
+                profile_picture TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                current_streak INTEGER DEFAULT 0,
+                best_streak INTEGER DEFAULT 0,
+                last_active_date DATE
+            );
 
-        -- Tasks table
-        CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            task_name TEXT NOT NULL,
-            subject TEXT NOT NULL,
-            estimated_minutes INTEGER NOT NULL,
-            actual_minutes INTEGER DEFAULT 0,
-            status TEXT DEFAULT 'pending',
-            started_at DATETIME,
-            completed_at DATETIME,
-            paused_at DATETIME,
-            task_date DATE NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        );
+            -- Tasks table
+            CREATE TABLE IF NOT EXISTS tasks (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                task_name TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                estimated_minutes INTEGER NOT NULL,
+                actual_minutes INTEGER DEFAULT 0,
+                status TEXT DEFAULT 'pending',
+                started_at TIMESTAMP,
+                completed_at TIMESTAMP,
+                paused_at TIMESTAMP,
+                task_date DATE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
 
-        -- Task sessions table (for timeline tracking)
-        CREATE TABLE IF NOT EXISTS task_sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            task_id INTEGER NOT NULL,
-            started_at DATETIME NOT NULL,
-            ended_at DATETIME,
-            duration_minutes INTEGER DEFAULT 0,
-            end_reason TEXT,
-            session_date DATE NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (task_id) REFERENCES tasks(id)
-        );
+            -- Task sessions table (for timeline tracking)
+            CREATE TABLE IF NOT EXISTS task_sessions (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+                started_at TIMESTAMP NOT NULL,
+                ended_at TIMESTAMP,
+                duration_minutes INTEGER DEFAULT 0,
+                end_reason TEXT,
+                session_date DATE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
 
-        -- Daily summaries table
-        CREATE TABLE IF NOT EXISTS daily_summaries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            summary_date DATE NOT NULL,
-            maths_problems INTEGER DEFAULT 0,
-            physics_problems INTEGER DEFAULT 0,
-            chemistry_problems INTEGER DEFAULT 0,
-            topics_covered TEXT,
-            total_study_hours REAL DEFAULT 0,
-            notes TEXT,
-            self_rating INTEGER CHECK(self_rating >= 1 AND self_rating <= 5),
-            tasks_completed INTEGER DEFAULT 0,
-            tasks_total INTEGER DEFAULT 0,
-            tasks_ontime INTEGER DEFAULT 0,
-            tasks_delayed INTEGER DEFAULT 0,
-            success_rate REAL DEFAULT 0,
-            ended_at DATETIME,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            UNIQUE(user_id, summary_date)
-        );
+            -- Daily summaries table
+            CREATE TABLE IF NOT EXISTS daily_summaries (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                summary_date DATE NOT NULL,
+                maths_problems INTEGER DEFAULT 0,
+                physics_problems INTEGER DEFAULT 0,
+                chemistry_problems INTEGER DEFAULT 0,
+                topics_covered TEXT,
+                total_study_hours DOUBLE PRECISION DEFAULT 0,
+                notes TEXT,
+                self_rating INTEGER CHECK(self_rating >= 1 AND self_rating <= 5),
+                tasks_completed INTEGER DEFAULT 0,
+                tasks_total INTEGER DEFAULT 0,
+                tasks_ontime INTEGER DEFAULT 0,
+                tasks_delayed INTEGER DEFAULT 0,
+                success_rate DOUBLE PRECISION DEFAULT 0,
+                ended_at TIMESTAMP,
+                UNIQUE(user_id, summary_date)
+            );
 
-        -- Active sessions table (for real-time tracking)
-        CREATE TABLE IF NOT EXISTS active_sessions (
-            user_id INTEGER PRIMARY KEY,
-            active_task_id INTEGER,
-            active_session_id INTEGER,
-            last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (active_task_id) REFERENCES tasks(id),
-            FOREIGN KEY (active_session_id) REFERENCES task_sessions(id)
-        );
+            -- Active sessions table (for real-time tracking)
+            CREATE TABLE IF NOT EXISTS active_sessions (
+                user_id INTEGER PRIMARY KEY REFERENCES users(id),
+                active_task_id INTEGER REFERENCES tasks(id),
+                active_session_id INTEGER REFERENCES task_sessions(id),
+                last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('Database tables initialized (Postgres)');
+    } catch (err) {
+        console.error('Error creating tables:', err);
+    }
+};
 
-        -- Create indexes for performance
-        CREATE INDEX IF NOT EXISTS idx_tasks_user_date ON tasks(user_id, task_date);
-        CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
-        CREATE INDEX IF NOT EXISTS idx_sessions_user_date ON task_sessions(user_id, session_date);
-        CREATE INDEX IF NOT EXISTS idx_sessions_date ON task_sessions(session_date);
-        CREATE INDEX IF NOT EXISTS idx_summaries_user_date ON daily_summaries(user_id, summary_date);
-    `, (err) => {
-        if (err) {
-            console.error('Error creating tables:', err);
-        } else {
-            console.log('Database tables initialized');
-        }
-    });
-}
+// Run Init
+initDatabase();
 
 // Middleware
 app.use(express.json());
@@ -123,7 +113,7 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false,
+        secure: process.env.NODE_ENV === 'production', // true in production
         maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     }
 }));
@@ -134,34 +124,6 @@ function requireAuth(req, res, next) {
         return res.status(401).json({ error: 'Not authenticated' });
     }
     next();
-}
-
-// Helper: Run database query with promise
-function dbRun(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        db.run(sql, params, function(err) {
-            if (err) reject(err);
-            else resolve({ lastID: this.lastID, changes: this.changes });
-        });
-    });
-}
-
-function dbGet(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        db.get(sql, params, (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
-        });
-    });
-}
-
-function dbAll(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows || []);
-        });
-    });
 }
 
 // Helper: Get today's date
@@ -187,8 +149,8 @@ app.post('/api/register', async (req, res) => {
         }
         
         // Check if username exists
-        const existing = await dbGet('SELECT id FROM users WHERE username = ?', [username]);
-        if (existing) {
+        const existing = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+        if (existing.rows.length > 0) {
             return res.status(400).json({ error: 'Username already exists' });
         }
         
@@ -196,17 +158,20 @@ app.post('/api/register', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         
         // Create user
-        const result = await dbRun(
-            'INSERT INTO users (username, password, name) VALUES (?, ?, ?)',
+        // Postgres uses RETURNING id to get the new ID immediately
+        const result = await db.query(
+            'INSERT INTO users (username, password, name) VALUES ($1, $2, $3) RETURNING id',
             [username, hashedPassword, name]
         );
         
+        const newUserId = result.rows[0].id;
+
         // Set session
-        req.session.userId = result.lastID;
+        req.session.userId = newUserId;
         
         res.json({
             success: true,
-            user: { id: result.lastID, username, name }
+            user: { id: newUserId, username, name }
         });
         
     } catch (error) {
@@ -225,7 +190,9 @@ app.post('/api/login', async (req, res) => {
         }
         
         // Find user
-        const user = await dbGet('SELECT * FROM users WHERE username = ?', [username]);
+        const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+        const user = result.rows[0];
+
         if (!user) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
@@ -240,7 +207,7 @@ app.post('/api/login', async (req, res) => {
         req.session.userId = user.id;
         
         // Update last seen
-        await dbRun('UPDATE users SET last_active_date = ? WHERE id = ?', [getTodayDate(), user.id]);
+        await db.query('UPDATE users SET last_active_date = $1 WHERE id = $2', [getTodayDate(), user.id]);
         
         res.json({
             success: true,
@@ -268,11 +235,13 @@ app.get('/api/logout', (req, res) => {
 // Get current user
 app.get('/api/current-user', requireAuth, async (req, res) => {
     try {
-        const user = await dbGet(
-            'SELECT id, username, name, created_at, current_streak, best_streak FROM users WHERE id = ?',
+        const result = await db.query(
+            'SELECT id, username, name, created_at, current_streak, best_streak FROM users WHERE id = $1',
             [req.session.userId]
         );
         
+        const user = result.rows[0];
+
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
@@ -302,6 +271,7 @@ app.post('/api/tasks/batch-add', requireAuth, async (req, res) => {
         
         const createdTasks = [];
         
+        // Postgres is best handled with a loop for simple batch inserts like this
         for (const task of tasks) {
             const { task_name, subject, estimated_minutes } = task;
             const taskDate = task.task_date || today;
@@ -310,14 +280,14 @@ app.post('/api/tasks/batch-add', requireAuth, async (req, res) => {
                 continue;
             }
             
-            const result = await dbRun(
+            const result = await db.query(
                 `INSERT INTO tasks (user_id, task_name, subject, estimated_minutes, task_date)
-                 VALUES (?, ?, ?, ?, ?)`,
+                 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
                 [userId, task_name, subject, estimated_minutes, taskDate]
             );
             
             createdTasks.push({
-                id: result.lastID,
+                id: result.rows[0].id,
                 task_name,
                 subject,
                 estimated_minutes,
@@ -340,12 +310,12 @@ app.get('/api/tasks/today', requireAuth, async (req, res) => {
         const userId = req.session.userId;
         const today = getTodayDate();
         
-        const tasks = await dbAll(
-            `SELECT * FROM tasks WHERE user_id = ? AND task_date = ? ORDER BY created_at`,
+        const result = await db.query(
+            `SELECT * FROM tasks WHERE user_id = $1 AND task_date = $2 ORDER BY created_at`,
             [userId, today]
         );
         
-        res.json({ tasks });
+        res.json({ tasks: result.rows });
         
     } catch (error) {
         console.error('Get today tasks error:', error);
@@ -358,7 +328,9 @@ app.get('/api/tasks/:taskId', requireAuth, async (req, res) => {
     try {
         const { taskId } = req.params;
         
-        const task = await dbGet('SELECT * FROM tasks WHERE id = ?', [taskId]);
+        const result = await db.query('SELECT * FROM tasks WHERE id = $1', [taskId]);
+        const task = result.rows[0];
+
         if (!task) {
             return res.status(404).json({ error: 'Task not found' });
         }
@@ -380,7 +352,9 @@ app.post('/api/tasks/:taskId/start', requireAuth, async (req, res) => {
         const today = getTodayDate();
         
         // Check if task belongs to user
-        const task = await dbGet('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [taskId, userId]);
+        const taskRes = await db.query('SELECT * FROM tasks WHERE id = $1 AND user_id = $2', [taskId, userId]);
+        const task = taskRes.rows[0];
+
         if (!task) {
             return res.status(404).json({ error: 'Task not found' });
         }
@@ -389,38 +363,41 @@ app.post('/api/tasks/:taskId/start', requireAuth, async (req, res) => {
         let previousTaskName = null;
         
         // Check for any active task and stop it
-        const activeSession = await dbGet(
-            'SELECT * FROM active_sessions WHERE user_id = ?',
+        const activeRes = await db.query(
+            'SELECT * FROM active_sessions WHERE user_id = $1',
             [userId]
         );
+        const activeSession = activeRes.rows[0];
         
         if (activeSession && activeSession.active_task_id) {
             // Get the active task
-            const activeTask = await dbGet('SELECT * FROM tasks WHERE id = ?', [activeSession.active_task_id]);
+            const activeTaskRes = await db.query('SELECT * FROM tasks WHERE id = $1', [activeSession.active_task_id]);
+            const activeTask = activeTaskRes.rows[0];
             
             if (activeTask && activeTask.id !== parseInt(taskId)) {
                 previousTaskStopped = true;
                 previousTaskName = activeTask.task_name;
                 
                 // End the current session
-                const currentSession = await dbGet(
-                    'SELECT * FROM task_sessions WHERE id = ?',
+                const currentSessionRes = await db.query(
+                    'SELECT * FROM task_sessions WHERE id = $1',
                     [activeSession.active_session_id]
                 );
+                const currentSession = currentSessionRes.rows[0];
                 
                 if (currentSession) {
                     const duration = Math.floor((new Date(now) - new Date(currentSession.started_at)) / 60000);
                     
-                    await dbRun(
-                        `UPDATE task_sessions SET ended_at = ?, duration_minutes = ?, end_reason = 'switched'
-                         WHERE id = ?`,
+                    await db.query(
+                        `UPDATE task_sessions SET ended_at = $1, duration_minutes = $2, end_reason = 'switched'
+                         WHERE id = $3`,
                         [now, duration, currentSession.id]
                     );
                     
                     // Update the task's actual_minutes
-                    await dbRun(
-                        `UPDATE tasks SET actual_minutes = actual_minutes + ?, status = 'paused'
-                         WHERE id = ?`,
+                    await db.query(
+                        `UPDATE tasks SET actual_minutes = actual_minutes + $1, status = 'paused'
+                         WHERE id = $2`,
                         [duration, activeTask.id]
                     );
                 }
@@ -428,33 +405,38 @@ app.post('/api/tasks/:taskId/start', requireAuth, async (req, res) => {
         }
         
         // Create new session
-        const sessionResult = await dbRun(
+        const sessionResult = await db.query(
             `INSERT INTO task_sessions (user_id, task_id, started_at, session_date)
-             VALUES (?, ?, ?, ?)`,
+             VALUES ($1, $2, $3, $4) RETURNING id`,
             [userId, taskId, now, today]
         );
+        const newSessionId = sessionResult.rows[0].id;
         
         // Update task status
-        await dbRun(
-            `UPDATE tasks SET status = 'in_progress', started_at = COALESCE(started_at, ?)
-             WHERE id = ?`,
+        await db.query(
+            `UPDATE tasks SET status = 'in_progress', started_at = COALESCE(started_at, $1)
+             WHERE id = $2`,
             [now, taskId]
         );
         
-        // Update active sessions
-        await dbRun(
-            `INSERT OR REPLACE INTO active_sessions (user_id, active_task_id, active_session_id, last_seen)
-             VALUES (?, ?, ?, ?)`,
-            [userId, taskId, sessionResult.lastID, now]
+        // Update active sessions (Postgres UPSERT syntax)
+        await db.query(
+            `INSERT INTO active_sessions (user_id, active_task_id, active_session_id, last_seen)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (user_id) 
+             DO UPDATE SET active_task_id = EXCLUDED.active_task_id, 
+                           active_session_id = EXCLUDED.active_session_id,
+                           last_seen = EXCLUDED.last_seen`,
+            [userId, taskId, newSessionId, now]
         );
         
         // Get updated task
-        const updatedTask = await dbGet('SELECT * FROM tasks WHERE id = ?', [taskId]);
+        const updatedTaskRes = await db.query('SELECT * FROM tasks WHERE id = $1', [taskId]);
         
         res.json({
             success: true,
-            task: updatedTask,
-            session_id: sessionResult.lastID,
+            task: updatedTaskRes.rows[0],
+            session_id: newSessionId,
             previous_task_stopped: previousTaskStopped,
             previous_task_name: previousTaskName
         });
@@ -473,60 +455,64 @@ app.post('/api/tasks/:taskId/complete', requireAuth, async (req, res) => {
         const now = new Date().toISOString();
         
         // Get task
-        const task = await dbGet('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [taskId, userId]);
+        const taskRes = await db.query('SELECT * FROM tasks WHERE id = $1 AND user_id = $2', [taskId, userId]);
+        const task = taskRes.rows[0];
+
         if (!task) {
             return res.status(404).json({ error: 'Task not found' });
         }
         
         // End current session
-        const activeSession = await dbGet(
-            'SELECT * FROM active_sessions WHERE user_id = ?',
+        const activeRes = await db.query(
+            'SELECT * FROM active_sessions WHERE user_id = $1',
             [userId]
         );
+        const activeSession = activeRes.rows[0];
         
         if (activeSession && activeSession.active_session_id) {
-            const currentSession = await dbGet(
-                'SELECT * FROM task_sessions WHERE id = ?',
+            const currentSessionRes = await db.query(
+                'SELECT * FROM task_sessions WHERE id = $1',
                 [activeSession.active_session_id]
             );
+            const currentSession = currentSessionRes.rows[0];
             
             if (currentSession) {
                 const duration = Math.floor((new Date(now) - new Date(currentSession.started_at)) / 60000);
                 
-                await dbRun(
-                    `UPDATE task_sessions SET ended_at = ?, duration_minutes = ?, end_reason = 'completed'
-                     WHERE id = ?`,
+                await db.query(
+                    `UPDATE task_sessions SET ended_at = $1, duration_minutes = $2, end_reason = 'completed'
+                     WHERE id = $3`,
                     [now, duration, currentSession.id]
                 );
             }
         }
         
         // Calculate total actual minutes
-        const sessions = await dbAll(
-            'SELECT SUM(duration_minutes) as total FROM task_sessions WHERE task_id = ?',
+        const sessionsRes = await db.query(
+            'SELECT SUM(duration_minutes) as total FROM task_sessions WHERE task_id = $1',
             [taskId]
         );
-        const totalMinutes = (sessions[0]?.total || 0);
+        const totalMinutes = (sessionsRes.rows[0]?.total || 0);
         
         // Determine status
         const status = totalMinutes <= task.estimated_minutes ? 'completed_ontime' : 'completed_delayed';
         
         // Update task
-        await dbRun(
-            `UPDATE tasks SET status = ?, actual_minutes = ?, completed_at = ?
-             WHERE id = ?`,
+        await db.query(
+            `UPDATE tasks SET status = $1, actual_minutes = $2, completed_at = $3
+             WHERE id = $4`,
             [status, totalMinutes, now, taskId]
         );
         
         // Clear active session
-        await dbRun('DELETE FROM active_sessions WHERE user_id = ?', [userId]);
+        await db.query('DELETE FROM active_sessions WHERE user_id = $1', [userId]);
         
         // Get updated task
-        const updatedTask = await dbGet('SELECT * FROM tasks WHERE id = ?', [taskId]);
+        const updatedTaskRes = await db.query('SELECT * FROM tasks WHERE id = $1', [taskId]);
         
         res.json({
             success: true,
-            task: updatedTask,
+            task: updatedTaskRes.rows[0],
             status
         });
         
@@ -544,60 +530,60 @@ app.post('/api/tasks/:taskId/stop', requireAuth, async (req, res) => {
         const now = new Date().toISOString();
         
         // Get task
-        const task = await dbGet('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [taskId, userId]);
-        if (!task) {
-            return res.status(404).json({ error: 'Task not found' });
-        }
+        const taskRes = await db.query('SELECT * FROM tasks WHERE id = $1 AND user_id = $2', [taskId, userId]);
+        if (!taskRes.rows[0]) return res.status(404).json({ error: 'Task not found' });
         
         // End current session
-        const activeSession = await dbGet(
-            'SELECT * FROM active_sessions WHERE user_id = ?',
+        const activeRes = await db.query(
+            'SELECT * FROM active_sessions WHERE user_id = $1',
             [userId]
         );
+        const activeSession = activeRes.rows[0];
         
         let timeLogged = 0;
         
         if (activeSession && activeSession.active_session_id) {
-            const currentSession = await dbGet(
-                'SELECT * FROM task_sessions WHERE id = ?',
+            const currentSessionRes = await db.query(
+                'SELECT * FROM task_sessions WHERE id = $1',
                 [activeSession.active_session_id]
             );
+            const currentSession = currentSessionRes.rows[0];
             
             if (currentSession) {
                 const duration = Math.floor((new Date(now) - new Date(currentSession.started_at)) / 60000);
                 timeLogged = duration;
                 
-                await dbRun(
-                    `UPDATE task_sessions SET ended_at = ?, duration_minutes = ?, end_reason = 'stopped'
-                     WHERE id = ?`,
+                await db.query(
+                    `UPDATE task_sessions SET ended_at = $1, duration_minutes = $2, end_reason = 'stopped'
+                     WHERE id = $3`,
                     [now, duration, currentSession.id]
                 );
             }
         }
         
         // Calculate total actual minutes
-        const sessions = await dbAll(
-            'SELECT SUM(duration_minutes) as total FROM task_sessions WHERE task_id = ?',
+        const sessionsRes = await db.query(
+            'SELECT SUM(duration_minutes) as total FROM task_sessions WHERE task_id = $1',
             [taskId]
         );
-        const totalMinutes = (sessions[0]?.total || 0);
+        const totalMinutes = (sessionsRes.rows[0]?.total || 0);
         
         // Update task
-        await dbRun(
-            `UPDATE tasks SET status = 'stopped', actual_minutes = ?, paused_at = ?
-             WHERE id = ?`,
+        await db.query(
+            `UPDATE tasks SET status = 'stopped', actual_minutes = $1, paused_at = $2
+             WHERE id = $3`,
             [totalMinutes, now, taskId]
         );
         
         // Clear active session
-        await dbRun('DELETE FROM active_sessions WHERE user_id = ?', [userId]);
+        await db.query('DELETE FROM active_sessions WHERE user_id = $1', [userId]);
         
         // Get updated task
-        const updatedTask = await dbGet('SELECT * FROM tasks WHERE id = ?', [taskId]);
+        const updatedTaskRes = await db.query('SELECT * FROM tasks WHERE id = $1', [taskId]);
         
         res.json({
             success: true,
-            task: updatedTask,
+            task: updatedTaskRes.rows[0],
             time_logged_minutes: timeLogged
         });
         
@@ -615,55 +601,47 @@ app.post('/api/tasks/:taskId/pause', requireAuth, async (req, res) => {
         const now = new Date().toISOString();
         
         // Get task
-        const task = await dbGet('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [taskId, userId]);
-        if (!task) {
-            return res.status(404).json({ error: 'Task not found' });
-        }
+        const taskRes = await db.query('SELECT * FROM tasks WHERE id = $1 AND user_id = $2', [taskId, userId]);
+        if (!taskRes.rows[0]) return res.status(404).json({ error: 'Task not found' });
         
         // End current session
-        const activeSession = await dbGet(
-            'SELECT * FROM active_sessions WHERE user_id = ?',
-            [userId]
-        );
+        const activeRes = await db.query('SELECT * FROM active_sessions WHERE user_id = $1', [userId]);
+        const activeSession = activeRes.rows[0];
         
         if (activeSession && activeSession.active_session_id) {
-            const currentSession = await dbGet(
-                'SELECT * FROM task_sessions WHERE id = ?',
-                [activeSession.active_session_id]
-            );
+            const currentSessionRes = await db.query('SELECT * FROM task_sessions WHERE id = $1', [activeSession.active_session_id]);
+            const currentSession = currentSessionRes.rows[0];
             
             if (currentSession) {
                 const duration = Math.floor((new Date(now) - new Date(currentSession.started_at)) / 60000);
                 
-                await dbRun(
-                    `UPDATE task_sessions SET ended_at = ?, duration_minutes = ?, end_reason = 'paused'
-                     WHERE id = ?`,
+                await db.query(
+                    `UPDATE task_sessions SET ended_at = $1, duration_minutes = $2, end_reason = 'paused'
+                     WHERE id = $3`,
                     [now, duration, currentSession.id]
                 );
             }
         }
         
         // Calculate total actual minutes
-        const sessions = await dbAll(
-            'SELECT SUM(duration_minutes) as total FROM task_sessions WHERE task_id = ?',
+        const sessionsRes = await db.query(
+            'SELECT SUM(duration_minutes) as total FROM task_sessions WHERE task_id = $1',
             [taskId]
         );
-        const totalMinutes = (sessions[0]?.total || 0);
+        const totalMinutes = (sessionsRes.rows[0]?.total || 0);
         
         // Update task
-        await dbRun(
-            `UPDATE tasks SET status = 'paused', actual_minutes = ?, paused_at = ?
-             WHERE id = ?`,
+        await db.query(
+            `UPDATE tasks SET status = 'paused', actual_minutes = $1, paused_at = $2
+             WHERE id = $3`,
             [totalMinutes, now, taskId]
         );
         
         // Clear active session
-        await dbRun('DELETE FROM active_sessions WHERE user_id = ?', [userId]);
+        await db.query('DELETE FROM active_sessions WHERE user_id = $1', [userId]);
         
-        // Get updated task
-        const updatedTask = await dbGet('SELECT * FROM tasks WHERE id = ?', [taskId]);
-        
-        res.json({ success: true, task: updatedTask });
+        const updatedTaskRes = await db.query('SELECT * FROM tasks WHERE id = $1', [taskId]);
+        res.json({ success: true, task: updatedTaskRes.rows[0] });
         
     } catch (error) {
         console.error('Pause task error:', error);
@@ -677,13 +655,11 @@ app.delete('/api/tasks/:taskId', requireAuth, async (req, res) => {
         const { taskId } = req.params;
         const userId = req.session.userId;
         
-        // Get task
-        const task = await dbGet('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [taskId, userId]);
-        if (!task) {
-            return res.status(404).json({ error: 'Task not found' });
-        }
+        const taskRes = await db.query('SELECT * FROM tasks WHERE id = $1 AND user_id = $2', [taskId, userId]);
+        const task = taskRes.rows[0];
+
+        if (!task) return res.status(404).json({ error: 'Task not found' });
         
-        // Cannot delete in_progress or completed tasks
         if (task.status === 'in_progress') {
             return res.status(400).json({ error: 'Cannot delete an active task. Stop it first.' });
         }
@@ -692,9 +668,7 @@ app.delete('/api/tasks/:taskId', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Cannot delete completed tasks' });
         }
         
-        // Delete task
-        await dbRun('DELETE FROM tasks WHERE id = ?', [taskId]);
-        
+        await db.query('DELETE FROM tasks WHERE id = $1', [taskId]);
         res.json({ success: true });
         
     } catch (error) {
@@ -712,20 +686,22 @@ app.get('/api/users', requireAuth, async (req, res) => {
     try {
         const today = getTodayDate();
         
-        const users = await dbAll(`
+        const usersRes = await db.query(`
             SELECT 
                 u.id, u.username, u.name, u.created_at, 
                 u.current_streak, u.best_streak
             FROM users u
             ORDER BY u.name
         `);
+        const users = usersRes.rows;
         
         // Get today's stats for each user
         for (const user of users) {
-            const todayTasks = await dbAll(
-                `SELECT * FROM tasks WHERE user_id = ? AND task_date = ?`,
+            const todayTasksRes = await db.query(
+                `SELECT * FROM tasks WHERE user_id = $1 AND task_date = $2`,
                 [user.id, today]
             );
+            const todayTasks = todayTasksRes.rows;
             
             const completed = todayTasks.filter(t => 
                 t.status === 'completed_ontime' || t.status === 'completed_delayed'
@@ -760,27 +736,30 @@ app.get('/api/users/:userId/profile', requireAuth, async (req, res) => {
     try {
         const { userId } = req.params;
         
-        const user = await dbGet(
+        const userRes = await db.query(
             `SELECT id, username, name, created_at, current_streak, best_streak 
-             FROM users WHERE id = ?`,
+             FROM users WHERE id = $1`,
             [userId]
         );
+        const user = userRes.rows[0];
         
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
         
         // Overall stats
-        const allTasks = await dbAll(
-            `SELECT * FROM tasks WHERE user_id = ? AND 
+        const allTasksRes = await db.query(
+            `SELECT * FROM tasks WHERE user_id = $1 AND 
              (status = 'completed_ontime' OR status = 'completed_delayed')`,
             [userId]
         );
+        const allTasks = allTasksRes.rows;
         
-        const allSummaries = await dbAll(
-            'SELECT * FROM daily_summaries WHERE user_id = ?',
+        const allSummariesRes = await db.query(
+            'SELECT * FROM daily_summaries WHERE user_id = $1',
             [userId]
         );
+        const allSummaries = allSummariesRes.rows;
         
         const totalProblems = allSummaries.reduce((sum, s) => 
             sum + s.maths_problems + s.physics_problems + s.chemistry_problems, 0
@@ -794,16 +773,18 @@ app.get('/api/users/:userId/profile', requireAuth, async (req, res) => {
         weekStart.setDate(weekStart.getDate() - weekStart.getDay());
         const weekStartStr = weekStart.toISOString().split('T')[0];
         
-        const weekTasks = await dbAll(
-            `SELECT * FROM tasks WHERE user_id = ? AND task_date >= ? AND 
+        const weekTasksRes = await db.query(
+            `SELECT * FROM tasks WHERE user_id = $1 AND task_date >= $2 AND 
              (status = 'completed_ontime' OR status = 'completed_delayed')`,
             [userId, weekStartStr]
         );
+        const weekTasks = weekTasksRes.rows;
         
-        const weekSummaries = await dbAll(
-            'SELECT * FROM daily_summaries WHERE user_id = ? AND summary_date >= ?',
+        const weekSummariesRes = await db.query(
+            'SELECT * FROM daily_summaries WHERE user_id = $1 AND summary_date >= $2',
             [userId, weekStartStr]
         );
+        const weekSummaries = weekSummariesRes.rows;
         
         const weekProblems = weekSummaries.reduce((sum, s) => 
             sum + s.maths_problems + s.physics_problems + s.chemistry_problems, 0
@@ -862,21 +843,21 @@ app.get('/api/users/:userId/profile', requireAuth, async (req, res) => {
     }
 });
 
-// Get user's today's tasks (viewable by everyone)
+// Get user's today's tasks
 app.get('/api/users/:userId/tasks/today', requireAuth, async (req, res) => {
     try {
         const { userId } = req.params;
         const today = getTodayDate();
         
-        const user = await dbGet('SELECT id, name FROM users WHERE id = ?', [userId]);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
+        const userRes = await db.query('SELECT id, name FROM users WHERE id = $1', [userId]);
+        const user = userRes.rows[0];
+        if (!user) return res.status(404).json({ error: 'User not found' });
         
-        const tasks = await dbAll(
-            `SELECT * FROM tasks WHERE user_id = ? AND task_date = ? ORDER BY created_at`,
+        const tasksRes = await db.query(
+            `SELECT * FROM tasks WHERE user_id = $1 AND task_date = $2 ORDER BY created_at`,
             [userId, today]
         );
+        const tasks = tasksRes.rows;
         
         const pending = tasks.filter(t => t.status === 'pending');
         const inProgress = tasks.filter(t => t.status === 'in_progress');
@@ -909,17 +890,17 @@ app.get('/api/users/:userId/tasks/active', requireAuth, async (req, res) => {
     try {
         const { userId } = req.params;
         
-        const activeSession = await dbGet(
-            'SELECT * FROM active_sessions WHERE user_id = ?',
-            [userId]
-        );
+        const activeRes = await db.query('SELECT * FROM active_sessions WHERE user_id = $1', [userId]);
+        const activeSession = activeRes.rows[0];
         
         if (!activeSession || !activeSession.active_task_id) {
             return res.json({ has_active: false, task: null });
         }
         
-        const task = await dbGet('SELECT * FROM tasks WHERE id = ?', [activeSession.active_task_id]);
-        const session = await dbGet('SELECT * FROM task_sessions WHERE id = ?', [activeSession.active_session_id]);
+        const taskRes = await db.query('SELECT * FROM tasks WHERE id = $1', [activeSession.active_task_id]);
+        const sessionRes = await db.query('SELECT * FROM task_sessions WHERE id = $1', [activeSession.active_session_id]);
+        const task = taskRes.rows[0];
+        const session = sessionRes.rows[0];
         
         const elapsedMinutes = session 
             ? Math.floor((Date.now() - new Date(session.started_at).getTime()) / 60000)
@@ -946,28 +927,29 @@ app.get('/api/users/:userId/tasks/history', requireAuth, async (req, res) => {
         const { userId } = req.params;
         const { startDate, endDate, subject } = req.query;
         
-        let sql = `SELECT * FROM tasks WHERE user_id = ? AND 
+        let sql = `SELECT * FROM tasks WHERE user_id = $1 AND 
                    (status = 'completed_ontime' OR status = 'completed_delayed' OR status = 'stopped')`;
         const params = [userId];
         
         if (startDate) {
-            sql += ' AND task_date >= ?';
+            sql += ` AND task_date >= $${params.length + 1}`;
             params.push(startDate);
         }
         
         if (endDate) {
-            sql += ' AND task_date <= ?';
+            sql += ` AND task_date <= $${params.length + 1}`;
             params.push(endDate);
         }
         
         if (subject) {
-            sql += ' AND subject = ?';
+            sql += ` AND subject = $${params.length + 1}`;
             params.push(subject);
         }
         
         sql += ' ORDER BY task_date DESC, completed_at DESC';
         
-        const tasks = await dbAll(sql, params);
+        const tasksRes = await db.query(sql, params);
+        const tasks = tasksRes.rows;
         
         const totalHours = tasks.reduce((sum, t) => sum + (t.actual_minutes || 0), 0) / 60;
         
@@ -991,18 +973,18 @@ app.get('/api/users/:userId/summary/:date', requireAuth, async (req, res) => {
     try {
         const { userId, date } = req.params;
         
-        const summary = await dbGet(
-            'SELECT * FROM daily_summaries WHERE user_id = ? AND summary_date = ?',
+        const summaryRes = await db.query(
+            'SELECT * FROM daily_summaries WHERE user_id = $1 AND summary_date = $2',
             [userId, date]
         );
+        const summary = summaryRes.rows[0];
         
         if (!summary) {
             return res.json({ exists: false, summary: null });
         }
         
-        // Get tasks for that day
-        const tasks = await dbAll(
-            `SELECT * FROM tasks WHERE user_id = ? AND task_date = ? AND
+        const tasksRes = await db.query(
+            `SELECT * FROM tasks WHERE user_id = $1 AND task_date = $2 AND
              (status = 'completed_ontime' OR status = 'completed_delayed')`,
             [userId, date]
         );
@@ -1010,7 +992,7 @@ app.get('/api/users/:userId/summary/:date', requireAuth, async (req, res) => {
         res.json({
             exists: true,
             summary,
-            tasks_that_day: tasks
+            tasks_that_day: tasksRes.rows
         });
         
     } catch (error) {
@@ -1025,12 +1007,12 @@ app.get('/api/users/:userId/summaries', requireAuth, async (req, res) => {
         const { userId } = req.params;
         const { limit = 7 } = req.query;
         
-        const summaries = await dbAll(
-            'SELECT * FROM daily_summaries WHERE user_id = ? ORDER BY summary_date DESC LIMIT ?',
+        const summariesRes = await db.query(
+            'SELECT * FROM daily_summaries WHERE user_id = $1 ORDER BY summary_date DESC LIMIT $2',
             [userId, limit]
         );
         
-        res.json({ summaries });
+        res.json({ summaries: summariesRes.rows });
         
     } catch (error) {
         console.error('Get summaries error:', error);
@@ -1042,20 +1024,20 @@ app.get('/api/users/:userId/summaries', requireAuth, async (req, res) => {
 // TIMELINE ENDPOINTS
 // ============================================
 
-// Get user's timeline for today
 app.get('/api/timeline/:userId/today', requireAuth, async (req, res) => {
     try {
         const { userId } = req.params;
         const today = getTodayDate();
         
-        const sessions = await dbAll(
+        const sessionsRes = await db.query(
             `SELECT ts.*, t.task_name, t.subject 
              FROM task_sessions ts
              JOIN tasks t ON ts.task_id = t.id
-             WHERE ts.user_id = ? AND ts.session_date = ?
+             WHERE ts.user_id = $1 AND ts.session_date = $2
              ORDER BY ts.started_at`,
             [userId, today]
         );
+        const sessions = sessionsRes.rows;
         
         const totalMinutes = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
         
@@ -1075,7 +1057,6 @@ app.get('/api/timeline/:userId/today', requireAuth, async (req, res) => {
             }
         }
         
-        // Subject breakdown
         const subjectBreakdown = {};
         sessions.forEach(s => {
             if (!subjectBreakdown[s.subject]) {
@@ -1102,19 +1083,19 @@ app.get('/api/timeline/:userId/today', requireAuth, async (req, res) => {
     }
 });
 
-// Get user's timeline for specific date
 app.get('/api/timeline/:userId/date/:date', requireAuth, async (req, res) => {
     try {
         const { userId, date } = req.params;
         
-        const sessions = await dbAll(
+        const sessionsRes = await db.query(
             `SELECT ts.*, t.task_name, t.subject 
              FROM task_sessions ts
              JOIN tasks t ON ts.task_id = t.id
-             WHERE ts.user_id = ? AND ts.session_date = ?
+             WHERE ts.user_id = $1 AND ts.session_date = $2
              ORDER BY ts.started_at`,
             [userId, date]
         );
+        const sessions = sessionsRes.rows;
         
         const totalMinutes = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
         
@@ -1134,27 +1115,27 @@ app.get('/api/timeline/:userId/date/:date', requireAuth, async (req, res) => {
     }
 });
 
-// Get all users' timelines for today
 app.get('/api/timeline/all/today', requireAuth, async (req, res) => {
     try {
         const today = getTodayDate();
         
-        const users = await dbAll('SELECT id, name FROM users');
+        const usersRes = await db.query('SELECT id, name FROM users');
+        const users = usersRes.rows;
         const result = { date: today, users: {} };
         
         for (const user of users) {
-            const sessions = await dbAll(
+            const sessionsRes = await db.query(
                 `SELECT ts.*, t.task_name, t.subject 
                  FROM task_sessions ts
                  JOIN tasks t ON ts.task_id = t.id
-                 WHERE ts.user_id = ? AND ts.session_date = ?
+                 WHERE ts.user_id = $1 AND ts.session_date = $2
                  ORDER BY ts.started_at`,
                 [user.id, today]
             );
             
             result.users[user.id] = {
                 user_name: user.name,
-                sessions
+                sessions: sessionsRes.rows
             };
         }
         
@@ -1170,7 +1151,6 @@ app.get('/api/timeline/all/today', requireAuth, async (req, res) => {
 // DAILY SUMMARY ROUTES
 // ============================================
 
-// End day summary
 app.post('/api/summary/end-day', requireAuth, async (req, res) => {
     try {
         const userId = req.session.userId;
@@ -1186,11 +1166,11 @@ app.post('/api/summary/end-day', requireAuth, async (req, res) => {
             self_rating = 3
         } = req.body;
         
-        // Get today's tasks
-        const tasks = await dbAll(
-            'SELECT * FROM tasks WHERE user_id = ? AND task_date = ?',
+        const tasksRes = await db.query(
+            'SELECT * FROM tasks WHERE user_id = $1 AND task_date = $2',
             [userId, today]
         );
+        const tasks = tasksRes.rows;
         
         const completed = tasks.filter(t => 
             t.status === 'completed_ontime' || t.status === 'completed_delayed'
@@ -1205,47 +1185,38 @@ app.post('/api/summary/end-day', requireAuth, async (req, res) => {
             ? Math.round((ontime.length / completed.length) * 100) 
             : 0;
         
-        // Check if summary already exists
-        const existing = await dbGet(
-            'SELECT id FROM daily_summaries WHERE user_id = ? AND summary_date = ?',
-            [userId, today]
+        // Postgres UPSERT (INSERT ... ON CONFLICT ... DO UPDATE)
+        await db.query(
+            `INSERT INTO daily_summaries 
+             (user_id, summary_date, maths_problems, physics_problems, chemistry_problems,
+              topics_covered, total_study_hours, notes, self_rating,
+              tasks_completed, tasks_total, tasks_ontime, tasks_delayed, success_rate, ended_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+             ON CONFLICT (user_id, summary_date) DO UPDATE SET
+             maths_problems = EXCLUDED.maths_problems,
+             physics_problems = EXCLUDED.physics_problems,
+             chemistry_problems = EXCLUDED.chemistry_problems,
+             topics_covered = EXCLUDED.topics_covered,
+             total_study_hours = EXCLUDED.total_study_hours,
+             notes = EXCLUDED.notes,
+             self_rating = EXCLUDED.self_rating,
+             tasks_completed = EXCLUDED.tasks_completed,
+             tasks_total = EXCLUDED.tasks_total,
+             tasks_ontime = EXCLUDED.tasks_ontime,
+             tasks_delayed = EXCLUDED.tasks_delayed,
+             success_rate = EXCLUDED.success_rate,
+             ended_at = EXCLUDED.ended_at`,
+            [
+                userId, today, maths_problems, physics_problems, chemistry_problems,
+                topics_covered, totalHours, notes, self_rating,
+                completed.length, tasks.length, ontime.length, delayed.length,
+                successRate, now
+            ]
         );
         
-        if (existing) {
-            // Update existing
-            await dbRun(
-                `UPDATE daily_summaries SET
-                 maths_problems = ?, physics_problems = ?, chemistry_problems = ?,
-                 topics_covered = ?, total_study_hours = ?, notes = ?, self_rating = ?,
-                 tasks_completed = ?, tasks_total = ?, tasks_ontime = ?, tasks_delayed = ?,
-                 success_rate = ?, ended_at = ?
-                 WHERE id = ?`,
-                [
-                    maths_problems, physics_problems, chemistry_problems,
-                    topics_covered, totalHours, notes, self_rating,
-                    completed.length, tasks.length, ontime.length, delayed.length,
-                    successRate, now, existing.id
-                ]
-            );
-        } else {
-            // Create new
-            await dbRun(
-                `INSERT INTO daily_summaries 
-                 (user_id, summary_date, maths_problems, physics_problems, chemistry_problems,
-                  topics_covered, total_study_hours, notes, self_rating,
-                  tasks_completed, tasks_total, tasks_ontime, tasks_delayed, success_rate, ended_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [
-                    userId, today, maths_problems, physics_problems, chemistry_problems,
-                    topics_covered, totalHours, notes, self_rating,
-                    completed.length, tasks.length, ontime.length, delayed.length,
-                    successRate, now
-                ]
-            );
-        }
-        
         // Update streak
-        const user = await dbGet('SELECT last_active_date, current_streak FROM users WHERE id = ?', [userId]);
+        const userRes = await db.query('SELECT last_active_date, current_streak FROM users WHERE id = $1', [userId]);
+        const user = userRes.rows[0];
         
         let newStreak = 1;
         let streakUpdated = false;
@@ -1263,8 +1234,8 @@ app.post('/api/summary/end-day', requireAuth, async (req, res) => {
             }
         }
         
-        await dbRun(
-            'UPDATE users SET current_streak = ?, best_streak = MAX(best_streak, ?), last_active_date = ? WHERE id = ?',
+        await db.query(
+            'UPDATE users SET current_streak = $1, best_streak = GREATEST(best_streak, $2), last_active_date = $3 WHERE id = $4',
             [newStreak, newStreak, today, userId]
         );
         
@@ -1302,12 +1273,12 @@ app.get('/api/summary/today', requireAuth, async (req, res) => {
         const userId = req.session.userId;
         const today = getTodayDate();
         
-        const summary = await dbGet(
-            'SELECT * FROM daily_summaries WHERE user_id = ? AND summary_date = ?',
+        const summaryRes = await db.query(
+            'SELECT * FROM daily_summaries WHERE user_id = $1 AND summary_date = $2',
             [userId, today]
         );
         
-        res.json({ exists: !!summary, summary });
+        res.json({ exists: !!summaryRes.rows[0], summary: summaryRes.rows[0] });
         
     } catch (error) {
         console.error('Get summary error:', error);
@@ -1315,18 +1286,17 @@ app.get('/api/summary/today', requireAuth, async (req, res) => {
     }
 });
 
-// Check if day has been ended
 app.get('/api/summary/check/:date', requireAuth, async (req, res) => {
     try {
         const userId = req.session.userId;
         const { date } = req.params;
         
-        const summary = await dbGet(
-            'SELECT id FROM daily_summaries WHERE user_id = ? AND summary_date = ?',
+        const summaryRes = await db.query(
+            'SELECT id FROM daily_summaries WHERE user_id = $1 AND summary_date = $2',
             [userId, date]
         );
         
-        res.json({ ended: !!summary });
+        res.json({ ended: !!summaryRes.rows[0] });
         
     } catch (error) {
         console.error('Check summary error:', error);
@@ -1338,28 +1308,28 @@ app.get('/api/summary/check/:date', requireAuth, async (req, res) => {
 // LIVE FEED ENDPOINTS
 // ============================================
 
-// Get active feed
 app.get('/api/feed/active', requireAuth, async (req, res) => {
     try {
         const today = getTodayDate();
         
-        const users = await dbAll(`
+        const usersRes = await db.query(`
             SELECT u.id, u.name, u.current_streak,
                    a.active_task_id, a.last_seen
             FROM users u
             LEFT JOIN active_sessions a ON u.id = a.user_id
             ORDER BY u.name
         `);
+        const users = usersRes.rows;
         
         const result = [];
         let groupStats = { total_tasks: 0, total_hours: 0, avg_success: 0 };
         
         for (const user of users) {
-            // Get today's tasks
-            const tasks = await dbAll(
-                'SELECT * FROM tasks WHERE user_id = ? AND task_date = ?',
+            const tasksRes = await db.query(
+                'SELECT * FROM tasks WHERE user_id = $1 AND task_date = $2',
                 [user.id, today]
             );
+            const tasks = tasksRes.rows;
             
             const completed = tasks.filter(t => 
                 t.status === 'completed_ontime' || t.status === 'completed_delayed'
@@ -1369,14 +1339,15 @@ app.get('/api/feed/active', requireAuth, async (req, res) => {
             
             const totalMinutes = completed.reduce((sum, t) => sum + (t.actual_minutes || 0), 0);
             
-            // Get active task details
             let activeTask = null;
             if (user.active_task_id) {
-                const task = await dbGet('SELECT * FROM tasks WHERE id = ?', [user.active_task_id]);
-                const session = await dbGet(
-                    'SELECT * FROM task_sessions WHERE task_id = ? AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1',
+                const taskRes = await db.query('SELECT * FROM tasks WHERE id = $1', [user.active_task_id]);
+                const sessionRes = await db.query(
+                    'SELECT * FROM task_sessions WHERE task_id = $1 AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1',
                     [user.active_task_id]
                 );
+                const task = taskRes.rows[0];
+                const session = sessionRes.rows[0];
                 
                 if (task && session) {
                     const elapsedMinutes = Math.floor((Date.now() - new Date(session.started_at).getTime()) / 60000);
@@ -1389,7 +1360,6 @@ app.get('/api/feed/active', requireAuth, async (req, res) => {
                 }
             }
             
-            // Calculate last seen
             let lastSeen = 'Never';
             let isOnline = false;
             
@@ -1425,12 +1395,10 @@ app.get('/api/feed/active', requireAuth, async (req, res) => {
                 streak: user.current_streak || 0
             });
             
-            // Update group stats
             groupStats.total_tasks += completed.length;
             groupStats.total_hours += totalMinutes / 60;
         }
         
-        // Calculate average success rate
         const successRates = result.map(u => u.today_stats.success_rate).filter(r => r > 0);
         groupStats.avg_success = successRates.length > 0 
             ? Math.round(successRates.reduce((a, b) => a + b, 0) / successRates.length) 
@@ -1445,32 +1413,33 @@ app.get('/api/feed/active', requireAuth, async (req, res) => {
     }
 });
 
-// SSE stream for real-time updates
+// SSE stream
 app.get('/api/stream', requireAuth, (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     
-    // Send initial data
     const sendUpdate = async () => {
         try {
             const today = getTodayDate();
             
-            const users = await dbAll(`
+            const usersRes = await db.query(`
                 SELECT u.id, u.name, u.current_streak,
                        a.active_task_id, a.last_seen
                 FROM users u
                 LEFT JOIN active_sessions a ON u.id = a.user_id
                 ORDER BY u.name
             `);
+            const users = usersRes.rows;
             
             const result = [];
             
             for (const user of users) {
-                const tasks = await dbAll(
-                    'SELECT * FROM tasks WHERE user_id = ? AND task_date = ?',
+                const tasksRes = await db.query(
+                    'SELECT * FROM tasks WHERE user_id = $1 AND task_date = $2',
                     [user.id, today]
                 );
+                const tasks = tasksRes.rows;
                 
                 const completed = tasks.filter(t => 
                     t.status === 'completed_ontime' || t.status === 'completed_delayed'
@@ -1481,11 +1450,13 @@ app.get('/api/stream', requireAuth, (req, res) => {
                 
                 let activeTask = null;
                 if (user.active_task_id) {
-                    const task = await dbGet('SELECT * FROM tasks WHERE id = ?', [user.active_task_id]);
-                    const session = await dbGet(
-                        'SELECT * FROM task_sessions WHERE task_id = ? AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1',
+                    const taskRes = await db.query('SELECT * FROM tasks WHERE id = $1', [user.active_task_id]);
+                    const sessionRes = await db.query(
+                        'SELECT * FROM task_sessions WHERE task_id = $1 AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1',
                         [user.active_task_id]
                     );
+                    const task = taskRes.rows[0];
+                    const session = sessionRes.rows[0];
                     
                     if (task && session) {
                         const elapsedMinutes = Math.floor((Date.now() - new Date(session.started_at).getTime()) / 60000);
@@ -1533,35 +1504,24 @@ app.get('/api/stream', requireAuth, (req, res) => {
                 });
             }
             
-            res.write(`data: ${JSON.stringify({ users: result })}
-
-`);
+            res.write(`data: ${JSON.stringify({ users: result })}\n\n`);
         } catch (error) {
             console.error('SSE update error:', error);
         }
     };
     
-    // Send update immediately
     sendUpdate();
-    
-    // Send updates every 5 seconds
     const interval = setInterval(sendUpdate, 5000);
-    
-    // Clean up on client disconnect
-    req.on('close', () => {
-        clearInterval(interval);
-    });
+    req.on('close', () => { clearInterval(interval); });
 });
 
 // ============================================
 // LEADERBOARD ENDPOINTS
 // ============================================
 
-// Get leaderboard
 app.get('/api/leaderboard/:period/:category', requireAuth, async (req, res) => {
     try {
         const { period, category } = req.params;
-        
         let dateFilter = '';
         const today = new Date();
         
@@ -1574,7 +1534,8 @@ app.get('/api/leaderboard/:period/:category', requireAuth, async (req, res) => {
             dateFilter = monthStart.toISOString().split('T')[0];
         }
         
-        const users = await dbAll('SELECT id, name FROM users');
+        const usersRes = await db.query('SELECT id, name FROM users');
+        const users = usersRes.rows;
         const rankings = [];
         
         for (const user of users) {
@@ -1588,17 +1549,18 @@ app.get('/api/leaderboard/:period/:category', requireAuth, async (req, res) => {
             };
             
             if (period === 'alltime') {
-                // All-time stats
-                const tasks = await dbAll(
-                    `SELECT * FROM tasks WHERE user_id = ? AND 
+                const tasksRes = await db.query(
+                    `SELECT * FROM tasks WHERE user_id = $1 AND 
                      (status = 'completed_ontime' OR status = 'completed_delayed')`,
                     [user.id]
                 );
-                
-                const summaries = await dbAll(
-                    'SELECT * FROM daily_summaries WHERE user_id = ?',
+                const summariesRes = await db.query(
+                    'SELECT * FROM daily_summaries WHERE user_id = $1',
                     [user.id]
                 );
+                
+                const tasks = tasksRes.rows;
+                const summaries = summariesRes.rows;
                 
                 const totalMinutes = tasks.reduce((sum, t) => sum + (t.actual_minutes || 0), 0);
                 const ontime = tasks.filter(t => t.status === 'completed_ontime').length;
@@ -1613,24 +1575,19 @@ app.get('/api/leaderboard/:period/:category', requireAuth, async (req, res) => {
                     hours_total: Math.round((totalMinutes / 60) * 10) / 10,
                     success_rate: tasks.length > 0 ? Math.round((ontime / tasks.length) * 100) : 0
                 };
-                
-                if (category === 'hours') primaryValue = secondaryStats.hours_total;
-                else if (category === 'problems') primaryValue = secondaryStats.problems_total;
-                else if (category === 'success') primaryValue = secondaryStats.success_rate;
-                else if (category === 'tasks') primaryValue = secondaryStats.tasks_completed;
-                
             } else {
-                // Weekly/Monthly stats
-                const tasks = await dbAll(
-                    `SELECT * FROM tasks WHERE user_id = ? AND task_date >= ? AND 
+                const tasksRes = await db.query(
+                    `SELECT * FROM tasks WHERE user_id = $1 AND task_date >= $2 AND 
                      (status = 'completed_ontime' OR status = 'completed_delayed')`,
                     [user.id, dateFilter]
                 );
-                
-                const summaries = await dbAll(
-                    'SELECT * FROM daily_summaries WHERE user_id = ? AND summary_date >= ?',
+                const summariesRes = await db.query(
+                    'SELECT * FROM daily_summaries WHERE user_id = $1 AND summary_date >= $2',
                     [user.id, dateFilter]
                 );
+                
+                const tasks = tasksRes.rows;
+                const summaries = summariesRes.rows;
                 
                 const totalMinutes = tasks.reduce((sum, t) => sum + (t.actual_minutes || 0), 0);
                 const ontime = tasks.filter(t => t.status === 'completed_ontime').length;
@@ -1645,12 +1602,12 @@ app.get('/api/leaderboard/:period/:category', requireAuth, async (req, res) => {
                     hours_total: Math.round((totalMinutes / 60) * 10) / 10,
                     success_rate: tasks.length > 0 ? Math.round((ontime / tasks.length) * 100) : 0
                 };
-                
-                if (category === 'hours') primaryValue = secondaryStats.hours_total;
-                else if (category === 'problems') primaryValue = secondaryStats.problems_total;
-                else if (category === 'success') primaryValue = secondaryStats.success_rate;
-                else if (category === 'tasks') primaryValue = secondaryStats.tasks_completed;
             }
+            
+            if (category === 'hours') primaryValue = secondaryStats.hours_total;
+            else if (category === 'problems') primaryValue = secondaryStats.problems_total;
+            else if (category === 'success') primaryValue = secondaryStats.success_rate;
+            else if (category === 'tasks') primaryValue = secondaryStats.tasks_completed;
             
             rankings.push({
                 user_id: user.id,
@@ -1660,13 +1617,8 @@ app.get('/api/leaderboard/:period/:category', requireAuth, async (req, res) => {
             });
         }
         
-        // Sort by primary value (descending)
         rankings.sort((a, b) => b.primary_value - a.primary_value);
-        
-        // Add rank
-        rankings.forEach((r, i) => {
-            r.rank = i + 1;
-        });
+        rankings.forEach((r, i) => { r.rank = i + 1; });
         
         res.json({
             period,
@@ -1685,33 +1637,32 @@ app.get('/api/leaderboard/:period/:category', requireAuth, async (req, res) => {
 // STATS ENDPOINTS
 // ============================================
 
-// Get app overview stats
 app.get('/api/stats/overview', requireAuth, async (req, res) => {
     try {
         const today = getTodayDate();
         
-        const totalUsers = await dbGet('SELECT COUNT(*) as count FROM users');
-        
-        const todayTasks = await dbAll(
-            `SELECT * FROM tasks WHERE task_date = ? AND 
+        const totalUsersRes = await db.query('SELECT COUNT(*) as count FROM users');
+        const todayTasksRes = await db.query(
+            `SELECT * FROM tasks WHERE task_date = $1 AND 
              (status = 'completed_ontime' OR status = 'completed_delayed')`,
             [today]
         );
         
+        const todayTasks = todayTasksRes.rows;
         const totalMinutes = todayTasks.reduce((sum, t) => sum + (t.actual_minutes || 0), 0);
         
-        // Get most active user today
-        const users = await dbAll('SELECT id, name FROM users');
+        const usersRes = await db.query('SELECT id, name FROM users');
+        const users = usersRes.rows;
         let mostActiveUser = null;
         let maxMinutes = 0;
         
         for (const user of users) {
-            const userTasks = await dbAll(
-                `SELECT * FROM tasks WHERE user_id = ? AND task_date = ? AND 
+            const userTasksRes = await db.query(
+                `SELECT * FROM tasks WHERE user_id = $1 AND task_date = $2 AND 
                  (status = 'completed_ontime' OR status = 'completed_delayed')`,
                 [user.id, today]
             );
-            const userMinutes = userTasks.reduce((sum, t) => sum + (t.actual_minutes || 0), 0);
+            const userMinutes = userTasksRes.rows.reduce((sum, t) => sum + (t.actual_minutes || 0), 0);
             
             if (userMinutes > maxMinutes) {
                 maxMinutes = userMinutes;
@@ -1720,7 +1671,7 @@ app.get('/api/stats/overview', requireAuth, async (req, res) => {
         }
         
         res.json({
-            total_users: totalUsers.count,
+            total_users: parseInt(totalUsersRes.rows[0].count),
             total_tasks_today: todayTasks.length,
             total_hours_today: Math.round((totalMinutes / 60) * 10) / 10,
             most_active_user_today: mostActiveUser || 'No one yet'
@@ -1732,11 +1683,9 @@ app.get('/api/stats/overview', requireAuth, async (req, res) => {
     }
 });
 
-// Get user's weekly stats
 app.get('/api/stats/user/:userId/weekly', requireAuth, async (req, res) => {
     try {
         const { userId } = req.params;
-        
         const days = [];
         const today = new Date();
         
@@ -1745,16 +1694,19 @@ app.get('/api/stats/user/:userId/weekly', requireAuth, async (req, res) => {
             date.setDate(date.getDate() - i);
             const dateStr = date.toISOString().split('T')[0];
             
-            const tasks = await dbAll(
-                `SELECT * FROM tasks WHERE user_id = ? AND task_date = ? AND 
+            const tasksRes = await db.query(
+                `SELECT * FROM tasks WHERE user_id = $1 AND task_date = $2 AND 
                  (status = 'completed_ontime' OR status = 'completed_delayed')`,
                 [userId, dateStr]
             );
             
-            const summary = await dbGet(
-                'SELECT * FROM daily_summaries WHERE user_id = ? AND summary_date = ?',
+            const summaryRes = await db.query(
+                'SELECT * FROM daily_summaries WHERE user_id = $1 AND summary_date = $2',
                 [userId, dateStr]
             );
+            
+            const tasks = tasksRes.rows;
+            const summary = summaryRes.rows[0];
             
             const totalMinutes = tasks.reduce((sum, t) => sum + (t.actual_minutes || 0), 0);
             const problems = summary 
