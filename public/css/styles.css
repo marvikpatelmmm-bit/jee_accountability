@@ -849,3 +849,9 @@ a:hover {
 .problem-stat.biology {
     color: var(--subject-biology);
 }
+
+/* Fix for Dropdown Menus (White text on White background) */
+select option {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+}

@@ -410,12 +410,11 @@
             background: var(--glass-bg);
         }
 
-        /* Weekly Chart */
-        .week-chart {
+.week-chart {
             display: flex;
-            align-items: flex-end;
+            align-items: stretch; /* ✅ CHANGED: Stretch to fill height */
             justify-content: space-between;
-            height: 200px;
+            height: 200px;        /* ✅ KEPT: Ensures the graph has vertical space */
             gap: var(--space-md);
             padding: var(--space-md) 0;
         }
@@ -425,7 +424,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: flex-end; /* ✅ ADDED: Push bars to the bottom */
             gap: var(--space-sm);
+            height: 100%;              /* ✅ ADDED: Use full container height */
         }
 
         .chart-bar {

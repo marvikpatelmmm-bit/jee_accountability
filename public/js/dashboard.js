@@ -400,10 +400,19 @@ async function stopActiveTask() {
 }
 
 // Stop a task (for non-active tasks)
+// Stop a task (for non-active tasks OR active tasks via list view)
 async function stopTask(taskId) {
     try {
+        // 1. Update Server
         const data = await apiCall(`/api/tasks/${taskId}/stop`, { method: 'POST' });
         showToast(`Task stopped. Time logged: ${formatMinutes(data.time_logged_minutes)}`, 'info');
+        
+        // 2. CRITICAL FIX: If this was the active task, stop the Hero Timer!
+        if (activeTaskId === taskId) {
+            hideActiveTask();
+        }
+
+        // 3. Refresh Data
         await loadTodaysTasks();
         await loadLiveFeed();
     } catch (error) {
