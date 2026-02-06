@@ -236,6 +236,7 @@ function getSubjectIcon(subject) {
         'maths': '📐',
         'physics': '⚛️',
         'chemistry': '🧪',
+        'biology': '🧬',
         'other': '📚'
     };
     return icons[subject.toLowerCase()] || icons.other;

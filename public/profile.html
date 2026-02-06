@@ -247,6 +247,7 @@
         .progress-fill.maths { background: var(--subject-maths); }
         .progress-fill.physics { background: var(--subject-physics); }
         .progress-fill.chemistry { background: var(--subject-chemistry); }
+        .progress-fill.biology { background: var(--subject-biology); }
 
         /* Today's Todo Section */
         .todo-summary {
@@ -356,6 +357,7 @@
         .problem-stat.maths { color: var(--subject-maths); }
         .problem-stat.physics { color: var(--subject-physics); }
         .problem-stat.chemistry { color: var(--subject-chemistry); }
+        .problem-stat.biology { color: var(--subject-biology); }
 
         .summary-topics, .summary-notes {
             font-size: 14px;
@@ -626,8 +628,34 @@
                             <div class="progress-fill chemistry" id="chemistry-progress" style="width: 0%"></div>
                         </div>
                     </div>
+
+                    <div class="subject-card">
+                        <div class="subject-header">
+                            <span class="subject-icon">🧬</span>
+                            <span class="subject-name">Biology</span>
+                        </div>
+                        <div class="subject-stats">
+                            <div class="subject-stat">
+                                <span class="label">Problems:</span>
+                                <span class="value" id="biology-problems-total">0</span>
+                            </div>
+                            <div class="subject-stat">
+                                <span class="label">Hours:</span>
+                                <span class="value" id="biology-hours">0h</span>
+                            </div>
+                            <div class="subject-stat">
+                                <span class="label">Tasks:</span>
+                                <span class="value" id="biology-tasks">0</span>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill biology" id="biology-progress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
                 </div>
             </div>
+            
 
             <!-- Today's Todo List (Visible to Everyone) -->
             <div class="section-card">
@@ -668,6 +696,7 @@
                         <option value="Maths">Maths</option>
                         <option value="Physics">Physics</option>
                         <option value="Chemistry">Chemistry</option>
+                        <option value="Biology">Biology</option>
                     </select>
                     <button class="btn btn-primary" id="apply-filters">Apply Filters</button>
                 </div>

@@ -38,6 +38,7 @@
     --subject-maths: #f97316;
     --subject-physics: #8b5cf6;
     --subject-chemistry: #10b981;
+    --subject-biology: #ec4899;
     --subject-other: #64748b;
     
     /* Status Colors */
@@ -355,6 +356,11 @@ a:hover {
 .subject-tag.chemistry {
     background: rgba(16, 185, 129, 0.2);
     color: var(--subject-chemistry);
+}
+
+.subject-tag.biology {
+    background: rgba(236, 72, 153, 0.2);
+    color: var(--subject-biology);
 }
 
 .subject-tag.other {
@@ -834,3 +840,12 @@ a:hover {
 .gap-4 { gap: var(--space-lg); }
 
 .hidden { display: none !important; }
+
+/* Biology Specifics */
+.progress-fill.biology {
+    background: var(--subject-biology);
+}
+
+.problem-stat.biology {
+    color: var(--subject-biology);
+}

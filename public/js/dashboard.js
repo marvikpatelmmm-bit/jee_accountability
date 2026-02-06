@@ -522,18 +522,19 @@ function openPlanDayModal() {
 }
 
 // Add task entry row
+// Add task entry row
 function addTaskEntryRow() {
     taskEntriesCount++;
     
     const row = document.createElement('div');
     row.className = 'task-entry-row';
     row.innerHTML = `
-        <input type="text" class="input task-name-input" placeholder="Task name (e.g., Integration Practice)" required>
+        <input type="text" class="input task-name-input" placeholder="Task name (e.g., Genetics Revision)" required>
         <select class="select subject-select">
             <option value="Maths">Maths</option>
             <option value="Physics">Physics</option>
             <option value="Chemistry">Chemistry</option>
-            <option value="Other">Other</option>
+            <option value="Biology">Biology</option> <option value="Other">Other</option>
         </select>
         <div class="time-input-group">
             <input type="number" class="input hours-input" placeholder="0" min="0" max="23" value="0">
@@ -634,6 +635,7 @@ async function openEndDayModal() {
         document.getElementById('maths-problems').value = 0;
         document.getElementById('physics-problems').value = 0;
         document.getElementById('chemistry-problems').value = 0;
+        document.getElementById('biology-problems').value = 0;
         document.getElementById('topics-covered').value = '';
         document.getElementById('day-notes').value = '';
         updateStarDisplay(0);
@@ -649,10 +651,14 @@ async function submitEndDay() {
     const mathsProblems = parseInt(document.getElementById('maths-problems').value) || 0;
     const physicsProblems = parseInt(document.getElementById('physics-problems').value) || 0;
     const chemistryProblems = parseInt(document.getElementById('chemistry-problems').value) || 0;
+
+    // NEW: Grab Biology problems
+    const biologyProblems = parseInt(document.getElementById('biology-problems').value) || 0;
+
     const topicsCovered = document.getElementById('topics-covered').value.trim();
     const notes = document.getElementById('day-notes').value.trim();
     const selfRating = getSelectedRating() || 3;
-    
+
     try {
         const data = await apiCall('/api/summary/end-day', {
             method: 'POST',
@@ -660,25 +666,25 @@ async function submitEndDay() {
                 maths_problems: mathsProblems,
                 physics_problems: physicsProblems,
                 chemistry_problems: chemistryProblems,
+                biology_problems: biologyProblems, // <--- Send to server
                 topics_covered: topicsCovered,
                 notes,
                 self_rating: selfRating
             })
         });
-        
+
         if (data.streak_updated) {
             showToast(`Day ended! New streak: ${data.new_streak} days 🔥`, 'success');
         } else {
             showToast('Day ended successfully!', 'success');
         }
-        
+
         closeAllModals();
         await loadQuickStats();
     } catch (error) {
         showToast(error.message || 'Failed to end day', 'error');
     }
 }
-
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
     if (liveFeedInterval) {

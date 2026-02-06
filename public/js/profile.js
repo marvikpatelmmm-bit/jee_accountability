@@ -104,18 +104,30 @@ async function loadProfile(userId) {
 
 // Update subject breakdown
 function updateSubjectBreakdown(breakdown) {
-    const subjects = ['maths', 'physics', 'chemistry'];
-    const totalHours = subjects.reduce((sum, s) => sum + breakdown[s].hours, 0);
+    // 1. Add 'biology' to this list
+    const subjects = ['maths', 'physics', 'chemistry', 'biology'];
+    
+    // Calculate total hours including Biology
+    const totalHours = subjects.reduce((sum, s) => sum + (breakdown[s]?.hours || 0), 0);
     
     subjects.forEach(subject => {
         const data = breakdown[subject];
-        document.getElementById(`${subject}-problems-total`).textContent = data.problems;
-        document.getElementById(`${subject}-hours`).textContent = Math.round(data.hours * 10) / 10 + 'h';
-        document.getElementById(`${subject}-tasks`).textContent = data.tasks;
         
-        // Update progress bar
-        const percentage = totalHours > 0 ? (data.hours / totalHours) * 100 : 0;
-        document.getElementById(`${subject}-progress`).style.width = percentage + '%';
+        // 2. Check if the elements exist before updating (Safety check)
+        const problemEl = document.getElementById(`${subject}-problems-total`);
+        const hoursEl = document.getElementById(`${subject}-hours`);
+        const tasksEl = document.getElementById(`${subject}-tasks`);
+        const progressEl = document.getElementById(`${subject}-progress`);
+
+        if (problemEl && hoursEl && tasksEl && progressEl) {
+            problemEl.textContent = data.problems;
+            hoursEl.textContent = Math.round(data.hours * 10) / 10 + 'h';
+            tasksEl.textContent = data.tasks;
+            
+            // Update progress bar
+            const percentage = totalHours > 0 ? (data.hours / totalHours) * 100 : 0;
+            progressEl.style.width = percentage + '%';
+        }
     });
 }
 
@@ -236,6 +248,7 @@ async function loadRecentSummaries(userId) {
                         <span class="problem-stat maths">📐 ${summary.maths_problems}</span>
                         <span class="problem-stat physics">⚛️ ${summary.physics_problems}</span>
                         <span class="problem-stat chemistry">🧪 ${summary.chemistry_problems}</span>
+                        <span class="problem-stat biology">🧬 ${summary.biology_problems || 0}</span>
                     </div>
                     ${summary.topics_covered ? `
                         <div class="summary-topics">
