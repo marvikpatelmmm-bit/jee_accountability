@@ -401,22 +401,33 @@ async function stopActiveTask() {
 
 // Stop a task (for non-active tasks)
 // Stop a task (for non-active tasks OR active tasks via list view)
+// Stop a task (Revised for instant UI feedback)
 async function stopTask(taskId) {
     try {
-        // 1. Update Server
+        console.log(`Stopping task: ${taskId}`);
+
+        // 1. FORCE STOP: If this is the active task, kill the timer UI immediately.
+        // We use loose equality (==) to be safe.
+        if (activeTaskId == taskId) {
+            console.log("Active task matched. Stopping timer immediately.");
+            hideActiveTask(); // <--- This kills the ring timer instantly
+            activeTaskId = null; // <--- Clear the global variable instantly
+        }
+
+        // 2. Now talk to the server
         const data = await apiCall(`/api/tasks/${taskId}/stop`, { method: 'POST' });
         showToast(`Task stopped. Time logged: ${formatMinutes(data.time_logged_minutes)}`, 'info');
         
-        // 2. CRITICAL FIX: If this was the active task, stop the Hero Timer!
-        if (activeTaskId === taskId) {
-            hideActiveTask();
-        }
-
-        // 3. Refresh Data
+        // 3. Refresh Data to ensure everything is in sync
         await loadTodaysTasks();
         await loadLiveFeed();
+        
     } catch (error) {
+        console.error(error);
         showToast(error.message || 'Failed to stop task', 'error');
+        
+        // OPTIONAL: If the server failed, we might want to re-show the timer,
+        // but for now, let's assume the stop worked or the user can reload.
     }
 }
 
